@@ -498,6 +498,10 @@
           prices.push(isWeekend ? plan.weekend : plan.weekday);
         } else if (plan.price !== undefined) {
           prices.push(plan.price);
+          // priceMaxがある場合は最大値も追加
+          if (plan.priceMax !== undefined) {
+            prices.push(plan.priceMax);
+          }
         }
       }
 
@@ -522,15 +526,24 @@
       // プランを5つまで表示
       const displayPlans = facility.plans.slice(0, 6);
       for (const plan of displayPlans) {
-        let price;
+        let priceStr;
         if (plan.weekday !== undefined) {
-          price = isWeekend ? plan.weekend : plan.weekday;
+          // 平日/土日で料金が異なる場合
+          const price = isWeekend ? plan.weekend : plan.weekday;
+          priceStr = '¥' + price.toLocaleString();
+        } else if (plan.priceMax !== undefined) {
+          // 料金レンジがある場合
+          priceStr = '¥' + plan.price.toLocaleString() + '〜' + plan.priceMax.toLocaleString();
         } else {
-          price = plan.price;
+          priceStr = '¥' + plan.price.toLocaleString();
+        }
+        // 追加人数料金
+        if (plan.extraPerson) {
+          priceStr += ' <span style="color:var(--text-muted);font-size:0.7rem">+1名¥' + plan.extraPerson.toLocaleString() + '</span>';
         }
         html += '<div class="pricing-row">';
         html += '<span class="pricing-plan">' + plan.name + '</span>';
-        html += '<span class="pricing-price">¥' + price.toLocaleString() + '</span>';
+        html += '<span class="pricing-price">' + priceStr + '</span>';
         html += '</div>';
       }
 

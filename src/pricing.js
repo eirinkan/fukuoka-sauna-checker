@@ -55,16 +55,14 @@ const PRICING = {
   saunaOoo: {
     name: 'SAUNA OOO FUKUOKA',
     url: 'https://ooo-sauna.com/fukuoka.html',
-    note: '部屋タイプで料金が異なる、追加人数で加算',
+    note: '追加1名で加算あり',
     plans: [
-      // マルの部屋（最大4名）
-      { name: 'マル - 100分', price: 5000, duration: 100, capacity: 1, extraPerson: 2500, maxCapacity: 4 },
-      { name: 'マル - 120分', price: 6500, duration: 120, capacity: 1, extraPerson: 2500, maxCapacity: 4 },
-      // サンカクの部屋（最大2名）
-      { name: 'サンカク - 100分', price: 4500, duration: 100, capacity: 1, extraPerson: 2500, maxCapacity: 2 },
-      { name: 'サンカク - 120分', price: 6000, duration: 120, capacity: 1, extraPerson: 2500, maxCapacity: 2 },
-      // シカクの部屋（最大6名）
-      { name: 'シカク - 120分', price: 9000, duration: 120, capacity: 1, extraPerson: 3000, maxCapacity: 6 }
+      // サンカクの部屋（最大2名 / 15.5㎡）
+      { name: 'サンカク（2名/15.5㎡）', price: 4500, priceMax: 6000, duration: 100, capacity: 1, extraPerson: 2500, maxCapacity: 2 },
+      // マルの部屋（最大3名 / 17.0㎡）
+      { name: 'マル（3名/17.0㎡）', price: 5000, priceMax: 6500, duration: 100, capacity: 1, extraPerson: 2500, maxCapacity: 3 },
+      // シカクの部屋（最大4名 / 23.4㎡）
+      { name: 'シカク（4名/23.4㎡）', weekday: 7000, weekend: 9000, duration: 120, capacity: 1, extraPerson: 3000, maxCapacity: 4 }
     ]
   },
 

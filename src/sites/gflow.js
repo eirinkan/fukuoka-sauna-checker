@@ -10,9 +10,9 @@
 const URL = 'https://sw.gflow.cloud/ooo-fukuoka/calendar_open';
 
 const ROOMS = [
-  { name: 'サンカク', selector: '.sankaku-h1', keyword: 'サンカク' },
-  { name: 'マル', selector: '.prime-h1', keyword: 'マル' },
-  { name: 'シカク', selector: '.vip-h1', keyword: 'シカク' }
+  { name: 'サンカク（2名/15.5㎡）', selector: '.sankaku-h1', keyword: 'サンカク' },
+  { name: 'マル（3名/17.0㎡）', selector: '.prime-h1', keyword: 'マル' },
+  { name: 'シカク（4名/23.4㎡）', selector: '.vip-h1', keyword: 'シカク' }
 ];
 
 async function scrape(browser) {
