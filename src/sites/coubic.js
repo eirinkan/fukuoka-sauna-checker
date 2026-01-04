@@ -12,7 +12,7 @@
 const BOOKING_URL = 'https://coubic.com/base-private-sauna/3957380/book';
 
 // コース種別（表示用）
-const COURSE_NAMES = ['120分コース'];
+const COURSE_NAMES = ['120分（最大2名）¥6,500〜¥10,800'];
 
 // 今日が平日かどうか判定
 function isWeekday(date) {

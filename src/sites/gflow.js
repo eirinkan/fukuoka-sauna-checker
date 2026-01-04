@@ -10,9 +10,9 @@
 const URL = 'https://sw.gflow.cloud/ooo-fukuoka/calendar_open';
 
 const ROOMS = [
-  { name: 'サンカク（2名/15.5㎡）', selector: '.sankaku-h1', keyword: 'サンカク' },
-  { name: 'マル（3名/17.0㎡）', selector: '.prime-h1', keyword: 'マル' },
-  { name: 'シカク（4名/23.4㎡）', selector: '.vip-h1', keyword: 'シカク' }
+  { name: 'サンカク（最大2名）100分 ¥4,500〜¥6,000＋¥2,500／名', selector: '.sankaku-h1', keyword: 'サンカク' },
+  { name: 'マル（最大3名）100分 ¥5,000〜¥6,500＋¥2,500／名', selector: '.prime-h1', keyword: 'マル' },
+  { name: 'シカク（最大4名）120分 ¥7,000〜¥9,000＋¥3,000／名', selector: '.vip-h1', keyword: 'シカク' }
 ];
 
 async function scrape(browser) {

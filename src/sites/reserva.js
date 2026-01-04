@@ -22,11 +22,11 @@ let cachedUserAgent = null;
 const GIRAFFE_MINAMITENJIN_ROOMS = [
   {
     url: 'https://reserva.be/giraffe_minamitenjin/reserve?mode=service_staff&search_evt_no=91eJwzNDAyszAGAAQpATU&ctg_no=05eJwzMjQ2NgIAAvQA_A',
-    name: '「陽」光の陽彩【120分】'
+    name: '「陽」光の陽彩【120分】最大7名 ¥6,600〜¥11,000'
   },
   {
     url: 'https://reserva.be/giraffe_minamitenjin/reserve?mode=service_staff&search_evt_no=88eJwzNDAyszACAAQoATQ&ctg_no=05eJwzMjQ2NgIAAvQA_A',
-    name: '「陰」静の陰影【120分】'
+    name: '「陰」静の陰影【120分】最大4名 ¥7,700〜¥11,000'
   }
 ];
 
@@ -34,11 +34,11 @@ const GIRAFFE_MINAMITENJIN_ROOMS = [
 const GIRAFFE_TENJIN_ROOMS = [
   {
     url: 'https://reserva.be/giraffe_minamitenjin/reserve?mode=service_staff&search_evt_no=72eJyzNDcztgQAAz8BEw&ctg_no=5aeJwzMjQyMAQAAuoA9w',
-    name: '和の静寂【120分】'
+    name: '和の静寂【120分】最大4名 ¥5,500〜¥9,900'
   },
   {
     url: 'https://reserva.be/giraffe_minamitenjin/reserve?mode=service_staff&search_evt_no=4feJyzNLcwMAIAAzgBCw&ctg_no=5aeJwzMjQyMAQAAuoA9w',
-    name: '温冷交互【120分】'
+    name: '温冷交互【120分】最大4名 ¥5,500〜¥9,900'
   }
 ];
 

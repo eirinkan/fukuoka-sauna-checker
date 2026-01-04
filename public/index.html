@@ -616,13 +616,11 @@
           <div class="facility-header">
             <span class="facility-name">${facility.name}</span>
             <div>
-              <button class="pricing-toggle" onclick="togglePricing('${facilityKey}')">詳細</button>
               ${facility.mapUrl ? '<a href="' + facility.mapUrl + '" target="_blank" class="map-btn">MAP</a>' : ''}
               <a href="${facility.url}" target="_blank" class="reserve-btn">予約</a>
             </div>
           </div>
           <div class="facility-content">
-            ${getPricingDetails(facilityKey)}
             ${facility.error ? `
               <div class="error">${facility.error}</div>
             ` : facility.linkOnly ? `
