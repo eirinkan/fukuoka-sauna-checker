@@ -363,6 +363,11 @@
       white-space: nowrap;
     }
 
+    .time-label.night {
+      background: rgba(138, 43, 226, 0.2);
+      color: #c9a0ff;
+    }
+
     .capacity-icon {
       color: var(--text-secondary);
       font-size: 0.8rem;
@@ -546,18 +551,18 @@
 
     // 部屋名をパースしてオブジェクトで返す
     function formatRoomName(name) {
-      // パターン: 部屋名（120分/定員2名）¥価格 または 部屋名（90分/120分/定員2名）¥価格
+      // パターン: 部屋名（120分/定員2名）¥価格 または 部屋名（90分/120分/定員2名）¥価格 または 部屋名（night/定員2名）¥価格
       let roomName = name;
       let time = '';
       let capacity = '';
       let price = '';
 
-      // 時間と定員を抽出（90分/120分/定員2名 または 120分/定員2名）
-      const metaMatch = name.match(/（([\d分\/]+)\/定員(\d+)名）/);
+      // 時間と定員を抽出（night/定員2名 または 90分/120分/定員2名 または 120分/定員2名）
+      const metaMatch = name.match(/（([\d分\/]+|night)\/定員(\d+)名）/);
       if (metaMatch) {
         time = metaMatch[1];
         capacity = metaMatch[2];
-        roomName = name.replace(/（[\d分\/]+\/定員\d+名）/, '');
+        roomName = name.replace(/（(?:[\d分\/]+|night)\/定員\d+名）/, '');
       }
 
       // 価格を抽出
@@ -708,7 +713,7 @@
                     <div class="room-meta">
                       ${formatted.price ? '<span class="room-price">' + formatted.price + '</span>' : ''}
                       ${formatted.capacity ? '<span class="capacity-icon">👤' + formatted.capacity + '</span>' : ''}
-                      ${formatted.time ? '<span class="time-label">' + formatted.time + '</span>' : ''}
+                      ${formatted.time ? '<span class="time-label' + (formatted.time === 'night' ? ' night' : '') + '">' + formatted.time + '</span>' : ''}
                     </div>
                   </div>
                   <div class="slots">
