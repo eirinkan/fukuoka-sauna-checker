@@ -135,13 +135,19 @@ async function scrape(browser) {
       result.dates[dateStr] = {};
 
       for (const room of ROOM_NAMES) {
-        // 時間をソート
+        // 時間をソート（開始時間で比較、深夜帯は24時以降として扱う）
         const slots = dayData.slots[room] || [];
         const displayName = ROOM_INFO[room] || room;
         result.dates[dateStr][displayName] = slots.sort((a, b) => {
-          const [aH, aM] = a.split(':').map(Number);
-          const [bH, bM] = b.split(':').map(Number);
-          return (aH * 60 + aM) - (bH * 60 + bM);
+          // "0:20〜5:20" から開始時間 "0:20" を抽出
+          const aStart = a.split('〜')[0];
+          const bStart = b.split('〜')[0];
+          const [aH, aM] = aStart.split(':').map(Number);
+          const [bH, bM] = bStart.split(':').map(Number);
+          // 深夜帯（0-6時）は24時以降として扱う
+          const aHour = aH < 7 ? aH + 24 : aH;
+          const bHour = bH < 7 ? bH + 24 : bH;
+          return (aHour * 60 + aM) - (bHour * 60 + bM);
         });
       }
     }
