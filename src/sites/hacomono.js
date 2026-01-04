@@ -15,7 +15,7 @@ const URL = 'https://kudochi-sauna.hacomono.jp/reserve/schedule/6/25';
 // 部屋名と定員情報（統一フォーマット：部屋名（時間/定員）価格）
 const ROOM_INFO = {
   'Silk': 'Silk（90分/定員2名）¥6,000',
-  'Orca': 'Orca（90分/定員2名）¥6,000',
+  'Orca': 'Orca（120分/定員2名）¥6,000',
   'Gold': 'Gold（90分/定員2名）¥6,000',
   'Club': 'Club（120分/定員3名）¥12,000',
   'Grove': 'Grove（120分/定員3名）¥12,000',
