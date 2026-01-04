@@ -19,8 +19,8 @@ const ROOM_INFO = {
   'Gold': 'Gold（90分/120分/定員2名）¥8,000〜¥10,000',
   'Club': 'Club（90分/120分/定員3名）¥8,000〜¥10,000',
   'Grove': 'Grove（90分/120分/定員3名）¥8,000〜¥10,000',
-  'Oasis': 'Oasis（90分/120分/定員4名）¥16,000',
-  'Eden': 'Eden（90分/120分/定員6名）¥24,000'
+  'Oasis': 'Oasis（120分/定員4名）¥16,000',
+  'Eden': 'Eden（120分/定員6名）¥24,000'
 };
 const ROOM_NAMES = Object.keys(ROOM_INFO);
 
