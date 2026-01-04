@@ -718,7 +718,16 @@
           1: { weekday: { 80: 5000, 100: 5800, 120: 6500, 150: 7500 }, weekend: { 80: 5300, 100: 6100, 120: 6800, 150: 7800 } },
           2: { weekday: { 80: 7800, 100: 9100, 120: 10300, 150: 12100 }, weekend: { 80: 8300, 100: 9600, 120: 10800, 150: 12600 } }
         }
-      }
+      },
+      // 脈 MYAKU（定員のみ、料金は固定）
+      '休 KYU': { capacity: 3 },
+      '水 MIZU': { capacity: 2 },
+      '火 HI': { capacity: 4 },
+      // テンジンサウナ（定員のみ、料金は固定）
+      'Standard': { capacity: 2 },
+      'Deluxe': { capacity: 4 },
+      // サウナヨーガン（定員のみ、料金は固定）
+      'プライベートサウナ': { capacity: 3 }
     };
 
     // 部屋名から料金計算キーを取得
@@ -730,6 +739,15 @@
       if (roomName.includes('「陽」')) return '「陽」光の陽彩';
       if (roomName.includes('和の静寂')) return '和の静寂';
       if (roomName.includes('温冷交互')) return '温冷交互';
+      // 脈 MYAKU
+      if (roomName.includes('休 KYU') || roomName.includes('休　KYU')) return '休 KYU';
+      if (roomName.includes('水 MIZU') || roomName.includes('水　MIZU')) return '水 MIZU';
+      if (roomName.includes('火 HI') || roomName.includes('火　HI')) return '火 HI';
+      // テンジンサウナ
+      if (roomName.includes('Standard')) return 'Standard';
+      if (roomName.includes('Deluxe')) return 'Deluxe';
+      // サウナヨーガン
+      if (roomName.includes('プライベートサウナ')) return 'プライベートサウナ';
       return null;
     }
 

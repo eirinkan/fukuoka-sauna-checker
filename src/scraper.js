@@ -12,6 +12,9 @@ const reserva = require('./sites/reserva');
 const hacomono = require('./sites/hacomono');
 const gflow = require('./sites/gflow');
 const coubic = require('./sites/coubic');
+const myaku = require('./sites/myaku');
+const tenjin = require('./sites/tenjin');
+const yogan = require('./sites/yogan');
 
 const DATA_FILE = path.join(__dirname, '../data/availability.json');
 
@@ -111,6 +114,33 @@ async function scrapeAll() {
       data.facilities.base = { error: e.message };
     }
 
+    // 脈 (spot-ly)
+    console.log('  - 脈 スクレイピング中...');
+    try {
+      data.facilities.myaku = await myaku.scrape(browser);
+    } catch (e) {
+      console.error('    脈 エラー:', e.message);
+      data.facilities.myaku = { error: e.message };
+    }
+
+    // テンジンサウナ (select-type)
+    console.log('  - テンジンサウナ スクレイピング中...');
+    try {
+      data.facilities.tenjin = await tenjin.scrape(browser);
+    } catch (e) {
+      console.error('    テンジンサウナ エラー:', e.message);
+      data.facilities.tenjin = { error: e.message };
+    }
+
+    // サウナヨーガン (reserva.be)
+    console.log('  - サウナヨーガン スクレイピング中...');
+    try {
+      data.facilities.yogan = await yogan.scrape(browser);
+    } catch (e) {
+      console.error('    サウナヨーガン エラー:', e.message);
+      data.facilities.yogan = { error: e.message };
+    }
+
     saveData(data);
     return data;
   } finally {
@@ -134,7 +164,10 @@ function getAvailability(date) {
     { key: 'giraffeMiamitenjin', name: 'GIRAFFE 天神', url: 'https://reserva.be/giraffe_minamitenjin', mapUrl: 'https://maps.app.goo.gl/jzrDoYaTVege5srB6' },
     { key: 'giraffeTenjin', name: 'GIRAFFE 南天神', url: 'https://reserva.be/giraffe_minamitenjin', mapUrl: 'https://maps.app.goo.gl/nAnPLjANSzuPVeLZA' },
     { key: 'saunaOoo', name: 'SAUNA OOO FUKUOKA', url: 'https://sw.gflow.cloud/ooo-fukuoka/calendar_open', mapUrl: 'https://www.google.com/maps/search/?api=1&query=SAUNA+OOO+FUKUOKA' },
-    { key: 'base', name: 'BASE Private sauna', url: 'https://coubic.com/base-private-sauna/3957380/book/course_type', mapUrl: 'https://www.google.com/maps/search/?api=1&query=BASE+Private+sauna+福岡' }
+    { key: 'base', name: 'BASE Private sauna', url: 'https://coubic.com/base-private-sauna/3957380/book/course_type', mapUrl: 'https://www.google.com/maps/search/?api=1&query=BASE+Private+sauna+福岡' },
+    { key: 'myaku', name: '脈 MYAKU', url: 'https://spot-ly.jp/ja/hotels/176', mapUrl: 'https://www.google.com/maps/search/?api=1&query=脈+MYAKU+サウナ+天神' },
+    { key: 'tenjin', name: 'テンジンサウナ', url: 'https://select-type.com/rsv/?id=1nwOWa5ac9Y', mapUrl: 'https://www.google.com/maps/search/?api=1&query=テンジンサウナ+福岡' },
+    { key: 'yogan', name: 'サウナヨーガン福岡天神', url: 'https://reserva.be/saunayogan', mapUrl: 'https://www.google.com/maps/search/?api=1&query=サウナヨーガン+福岡天神' }
   ];
 
   for (const info of facilityInfo) {
