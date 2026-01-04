@@ -59,6 +59,12 @@ async function scrape(browser) {
         const availableLessons = dayEl.querySelectorAll('.d_lesson:not(.disabled)');
 
         availableLessons.forEach(lesson => {
+          // FULLテキストがある場合は予約不可としてスキップ
+          const lessonText = lesson.textContent || '';
+          if (lessonText.includes('FULL') || lessonText.includes('満席') || lessonText.includes('×')) {
+            return;
+          }
+
           // 時間を取得（.fs_2.mb_text 要素）
           const timeEl = lesson.querySelector('.fs_2.mb_text');
           // 部屋名を取得（.schedule-label 要素）

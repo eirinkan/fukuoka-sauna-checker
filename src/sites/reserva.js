@@ -18,27 +18,27 @@ const { analyzeScreenshot } = require('../ai-scraper');
 let cachedCookies = null;
 let cachedUserAgent = null;
 
-// GIRAFFE 全店舗の部屋URL（店舗統合表示）
-// 南天神店（ctg_no=05eJwzMjQ2NgIAAvQA_A）
-// 天神店（ctg_no=5aeJwzMjQyMAQAAuoA9w）
-const GIRAFFE_ALL_ROOMS = [
-  // 南天神店
+// GIRAFFE 南天神店
+const GIRAFFE_MINAMITENJIN_ROOMS = [
   {
     url: 'https://reserva.be/giraffe_minamitenjin/reserve?mode=service_staff&search_evt_no=91eJwzNDAyszAGAAQpATU&ctg_no=05eJwzMjQ2NgIAAvQA_A',
-    name: '南天神：「陽」光の陽彩【120分】'
+    name: '「陽」光の陽彩【120分】'
   },
   {
     url: 'https://reserva.be/giraffe_minamitenjin/reserve?mode=service_staff&search_evt_no=88eJwzNDAyszACAAQoATQ&ctg_no=05eJwzMjQ2NgIAAvQA_A',
-    name: '南天神：「陰」静の陰影【120分】'
-  },
-  // 天神店
+    name: '「陰」静の陰影【120分】'
+  }
+];
+
+// GIRAFFE 天神店
+const GIRAFFE_TENJIN_ROOMS = [
   {
     url: 'https://reserva.be/giraffe_minamitenjin/reserve?mode=service_staff&search_evt_no=72eJyzNDcztgQAAz8BEw&ctg_no=5aeJwzMjQyMAQAAuoA9w',
-    name: '天神：和の静寂【120分】'
+    name: '和の静寂【120分】'
   },
   {
     url: 'https://reserva.be/giraffe_minamitenjin/reserve?mode=service_staff&search_evt_no=4feJyzNLcwMAIAAzgBCw&ctg_no=5aeJwzMjQyMAQAAuoA9w',
-    name: '天神：温冷交互【120分】'
+    name: '温冷交互【120分】'
   }
 ];
 
@@ -277,24 +277,15 @@ async function scrapeRoom(browser, room, facilityName, cfData) {
 }
 
 /**
- * GIRAFFE 全店舗スクレイピング（南天神・天神統合）
+ * 店舗別スクレイピング（内部関数）
  */
-async function scrape(browser) {
+async function scrapeStore(browser, rooms, storeName, cfData) {
   const result = { dates: {} };
   const today = new Date();
 
-  // FlareSolverrからCloudflare Cookieを取得
-  let cfData = null;
-  const isFlareSolverrAvailable = await flaresolverr.isAvailable();
-  if (isFlareSolverrAvailable) {
-    cfData = await getCloudfareCookies();
-  } else {
-    console.log('  FlareSolverr: 利用不可（直接Puppeteerを使用）');
-  }
-
-  for (const room of GIRAFFE_ALL_ROOMS) {
+  for (const room of rooms) {
     try {
-      const calendarData = await scrapeRoom(browser, room, 'GIRAFFE', cfData);
+      const calendarData = await scrapeRoom(browser, room, storeName, cfData);
 
       // 部屋ごとのデータを結果にマージ
       for (const [dateStr, times] of Object.entries(calendarData)) {
@@ -317,11 +308,41 @@ async function scrape(browser) {
         }
       }
     } catch (error) {
-      console.error(`GIRAFFE ${room.name} エラー:`, error.message);
+      console.error(`${storeName} ${room.name} エラー:`, error.message);
     }
   }
 
   return result;
 }
 
-module.exports = { scrape };
+/**
+ * GIRAFFE 南天神店スクレイピング
+ */
+async function scrapeMiamitenjin(browser) {
+  // FlareSolverrからCloudflare Cookieを取得
+  let cfData = null;
+  const isFlareSolverrAvailable = await flaresolverr.isAvailable();
+  if (isFlareSolverrAvailable) {
+    cfData = await getCloudfareCookies();
+  } else {
+    console.log('  FlareSolverr: 利用不可（直接Puppeteerを使用）');
+  }
+
+  return scrapeStore(browser, GIRAFFE_MINAMITENJIN_ROOMS, 'GIRAFFE南天神', cfData);
+}
+
+/**
+ * GIRAFFE 天神店スクレイピング
+ */
+async function scrapeTenjin(browser) {
+  // FlareSolverrからCloudflare Cookieを取得（キャッシュ済みなら再利用）
+  let cfData = null;
+  const isFlareSolverrAvailable = await flaresolverr.isAvailable();
+  if (isFlareSolverrAvailable) {
+    cfData = await getCloudfareCookies();
+  }
+
+  return scrapeStore(browser, GIRAFFE_TENJIN_ROOMS, 'GIRAFFE天神', cfData);
+}
+
+module.exports = { scrapeMiamitenjin, scrapeTenjin };

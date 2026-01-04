@@ -66,24 +66,29 @@ const PRICING = {
     ]
   },
 
-  // SAUNA Giraffe
-  giraffe: {
-    name: 'SAUNA Giraffe',
-    url: 'https://sauna-giraffe.com/',
+  // SAUNA Giraffe 南天神
+  giraffeMiamitenjin: {
+    name: 'GIRAFFE 南天神',
+    url: 'https://reserva.be/giraffe_minamitenjin',
     note: '人数で料金が異なる',
     plans: [
-      // 南天神
-      { name: '南天神「陽」- 120分 1名', price: 6500, duration: 120, capacity: 1, store: '南天神' },
-      { name: '南天神「陽」- 120分 2名', price: 8500, duration: 120, capacity: 2, store: '南天神' },
-      { name: '南天神「陽」- 120分 3名', price: 10500, duration: 120, capacity: 3, store: '南天神' },
-      { name: '南天神「陽」- 120分 4名', price: 12500, duration: 120, capacity: 4, store: '南天神' },
-      { name: '南天神「陰」- 120分 1名', price: 6500, duration: 120, capacity: 1, store: '南天神' },
-      { name: '南天神「陰」- 120分 2名', price: 8500, duration: 120, capacity: 2, store: '南天神' },
-      { name: '南天神「陰」- 120分 3名', price: 10500, duration: 120, capacity: 3, store: '南天神' },
-      { name: '南天神「陰」- 120分 4名', price: 12500, duration: 120, capacity: 4, store: '南天神' },
-      // 天神
-      { name: '天神 和の静寂 - 120分', price: 8000, duration: 120, capacity: 2, store: '天神' },
-      { name: '天神 温冷交互 - 120分', price: 8000, duration: 120, capacity: 2, store: '天神' }
+      { name: '「陽」1名', price: 6500, duration: 120, capacity: 1 },
+      { name: '「陽」2名', price: 8500, duration: 120, capacity: 2 },
+      { name: '「陽」3名', price: 10500, duration: 120, capacity: 3 },
+      { name: '「陽」4名', price: 12500, duration: 120, capacity: 4 },
+      { name: '「陰」1名', price: 6500, duration: 120, capacity: 1 },
+      { name: '「陰」2名', price: 8500, duration: 120, capacity: 2 }
+    ]
+  },
+
+  // SAUNA Giraffe 天神
+  giraffeTenjin: {
+    name: 'GIRAFFE 天神',
+    url: 'https://reserva.be/giraffe_minamitenjin',
+    note: '2名利用',
+    plans: [
+      { name: '和の静寂 120分', price: 8000, duration: 120, capacity: 2 },
+      { name: '温冷交互 120分', price: 8000, duration: 120, capacity: 2 }
     ]
   },
 

@@ -66,13 +66,22 @@ async function scrapeAll() {
       data.facilities.sakurado = { error: e.message };
     }
 
-    // GIRAFFE (RESERVA) - 南天神・天神統合
-    console.log('  - GIRAFFE スクレイピング中...');
+    // GIRAFFE 南天神 (RESERVA)
+    console.log('  - GIRAFFE南天神 スクレイピング中...');
     try {
-      data.facilities.giraffe = await reserva.scrape(browser);
+      data.facilities.giraffeMiamitenjin = await reserva.scrapeMiamitenjin(browser);
     } catch (e) {
-      console.error('    GIRAFFE エラー:', e.message);
-      data.facilities.giraffe = { error: e.message };
+      console.error('    GIRAFFE南天神 エラー:', e.message);
+      data.facilities.giraffeMiamitenjin = { error: e.message };
+    }
+
+    // GIRAFFE 天神 (RESERVA)
+    console.log('  - GIRAFFE天神 スクレイピング中...');
+    try {
+      data.facilities.giraffeTenjin = await reserva.scrapeTenjin(browser);
+    } catch (e) {
+      console.error('    GIRAFFE天神 エラー:', e.message);
+      data.facilities.giraffeTenjin = { error: e.message };
     }
 
     // KUDOCHI (hacomono)
@@ -120,11 +129,12 @@ function getAvailability(date) {
 
   // 各施設のデータを整形（KUDOCHIを一番上に）
   const facilityInfo = [
-    { key: 'kudochi', name: 'KUDOCHI福岡中洲', url: 'https://kudochi-sauna.hacomono.jp/reserve/schedule/6/25', mapUrl: 'https://maps.app.goo.gl/NfT48TAFCVMVhxXt5' },
-    { key: 'sakurado', name: 'SAUNA SAKURADO', url: 'https://sauna-sakurado.spa/reservation/', mapUrl: 'https://maps.app.goo.gl/QFBKHnmT2KM5ueud7' },
-    { key: 'giraffe', name: 'GIRAFFE', url: 'https://reserva.be/giraffe_minamitenjin', mapUrl: 'https://maps.app.goo.gl/kDm67Yrb2hKTgxRX6' },
-    { key: 'saunaOoo', name: 'SAUNA OOO FUKUOKA', url: 'https://sw.gflow.cloud/ooo-fukuoka/calendar_open', mapUrl: 'https://maps.app.goo.gl/cNWFE1Fxdmv4bvQR9' },
-    { key: 'base', name: 'BASE Private sauna', url: 'https://coubic.com/base-private-sauna/3957380/book/course_type', mapUrl: 'https://maps.app.goo.gl/rNPzxDpSdkxmHp4W9' }
+    { key: 'kudochi', name: 'KUDOCHI福岡中洲', url: 'https://kudochi-sauna.hacomono.jp/reserve/schedule/6/25', mapUrl: 'https://www.google.com/maps/search/?api=1&query=福岡県福岡市博多区中洲5-1-7+SPOONビル' },
+    { key: 'sakurado', name: 'SAUNA SAKURADO', url: 'https://sauna-sakurado.spa/reservation/', mapUrl: 'https://www.google.com/maps/search/?api=1&query=福岡県福岡市博多区綱場町9-5' },
+    { key: 'giraffeMiamitenjin', name: 'GIRAFFE 南天神', url: 'https://reserva.be/giraffe_minamitenjin', mapUrl: 'https://www.google.com/maps/search/?api=1&query=SAUNA+Giraffe+南天神+福岡' },
+    { key: 'giraffeTenjin', name: 'GIRAFFE 天神', url: 'https://reserva.be/giraffe_minamitenjin', mapUrl: 'https://www.google.com/maps/search/?api=1&query=SAUNA+Giraffe+天神+福岡' },
+    { key: 'saunaOoo', name: 'SAUNA OOO FUKUOKA', url: 'https://sw.gflow.cloud/ooo-fukuoka/calendar_open', mapUrl: 'https://www.google.com/maps/search/?api=1&query=福岡県福岡市博多区中洲5-2-5+サフィール許斐' },
+    { key: 'base', name: 'BASE Private sauna', url: 'https://coubic.com/base-private-sauna/3957380/book/course_type', mapUrl: 'https://www.google.com/maps/search/?api=1&query=福岡市中央区薬院1-2-5+BASE+Private+sauna' }
   ];
 
   for (const info of facilityInfo) {
