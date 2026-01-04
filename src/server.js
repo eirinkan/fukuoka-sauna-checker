@@ -51,15 +51,17 @@ cron.schedule('*/15 * * * *', async () => {
 });
 
 // サーバー起動
-app.listen(PORT, async () => {
+app.listen(PORT, () => {
   console.log(`サーバー起動: http://localhost:${PORT}`);
 
-  // 起動時に初回スクレイピング実行
-  console.log('初回スクレイピング開始...');
-  try {
-    await scrapeAll();
-    console.log('初回スクレイピング完了');
-  } catch (error) {
-    console.error('初回スクレイピングエラー:', error.message);
-  }
+  // 起動時に初回スクレイピング実行（setImmediateで遅延実行し、Expressコールバック外で実行）
+  setImmediate(async () => {
+    console.log('初回スクレイピング開始...');
+    try {
+      await scrapeAll();
+      console.log('初回スクレイピング完了');
+    } catch (error) {
+      console.error('初回スクレイピングエラー:', error.message);
+    }
+  });
 });

@@ -61,8 +61,8 @@ const PRICING = {
       { name: 'マル - 100分', price: 5000, duration: 100, capacity: 1, extraPerson: 2500, maxCapacity: 4 },
       { name: 'マル - 120分', price: 6500, duration: 120, capacity: 1, extraPerson: 2500, maxCapacity: 4 },
       // サンカクの部屋（最大2名）
-      { name: 'サンカク - 100分', price: 5000, duration: 100, capacity: 1, extraPerson: 2500, maxCapacity: 2 },
-      { name: 'サンカク - 120分', price: 6500, duration: 120, capacity: 1, extraPerson: 2500, maxCapacity: 2 },
+      { name: 'サンカク - 100分', price: 4500, duration: 100, capacity: 1, extraPerson: 2500, maxCapacity: 2 },
+      { name: 'サンカク - 120分', price: 6000, duration: 120, capacity: 1, extraPerson: 2500, maxCapacity: 2 },
       // シカクの部屋（最大6名）
       { name: 'シカク - 120分', price: 9000, duration: 120, capacity: 1, extraPerson: 3000, maxCapacity: 6 }
     ]

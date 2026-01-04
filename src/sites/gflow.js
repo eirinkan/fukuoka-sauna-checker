@@ -128,26 +128,27 @@ async function scrape(browser) {
         return data;
       });
 
-      // 部屋ごとのデータを結果にマージ
+      // まず7日分の日付を確保（部屋データがあってもなくても）
+      const today = new Date();
+      for (let i = 0; i < 7; i++) {
+        const date = new Date(today);
+        date.setDate(today.getDate() + i);
+        const dateStr = date.toISOString().split('T')[0];
+        if (!result.dates[dateStr]) {
+          result.dates[dateStr] = {};
+        }
+        // この部屋のデータがなければ空配列を設定
+        if (!result.dates[dateStr][room.name]) {
+          result.dates[dateStr][room.name] = [];
+        }
+      }
+
+      // 部屋ごとのデータを結果にマージ（上書き）
       for (const [dateStr, times] of Object.entries(tableData)) {
         if (!result.dates[dateStr]) {
           result.dates[dateStr] = {};
         }
         result.dates[dateStr][room.name] = times.sort();
-      }
-
-      // 部屋データがなかった場合、空配列を設定
-      if (Object.keys(tableData).length === 0) {
-        const today = new Date();
-        for (let i = 0; i < 7; i++) {
-          const date = new Date(today);
-          date.setDate(today.getDate() + i);
-          const dateStr = date.toISOString().split('T')[0];
-          if (!result.dates[dateStr]) {
-            result.dates[dateStr] = {};
-          }
-          result.dates[dateStr][room.name] = [];
-        }
       }
     }
 

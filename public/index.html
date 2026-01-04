@@ -190,6 +190,20 @@
       opacity: 1;
     }
 
+    .map-link {
+      color: var(--success);
+      text-decoration: none;
+      font-size: 0.8rem;
+      font-weight: 500;
+      opacity: 0.8;
+      transition: opacity 0.2s;
+      margin-right: 8px;
+    }
+
+    .map-link:hover {
+      opacity: 1;
+    }
+
     .facility-content {
       padding: 16px 18px;
     }
@@ -203,10 +217,10 @@
     }
 
     .room-name {
-      font-size: 0.8rem;
-      color: var(--text-muted);
-      margin-bottom: 8px;
-      font-weight: 500;
+      font-size: 0.95rem;
+      color: var(--text-primary);
+      margin-bottom: 10px;
+      font-weight: 600;
       display: flex;
       justify-content: space-between;
       align-items: center;
@@ -571,6 +585,7 @@
             <div>
               ${priceRange ? '<span class="price-range">' + priceRange + '</span>' : ''}
               <button class="pricing-toggle" onclick="togglePricing('${facilityKey}')">詳細</button>
+              ${facility.mapUrl ? '<a href="' + facility.mapUrl + '" target="_blank" class="map-link">📍</a>' : ''}
               <a href="${facility.url}" target="_blank" class="facility-link">予約 →</a>
             </div>
           </div>

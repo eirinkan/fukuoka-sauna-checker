@@ -118,13 +118,13 @@ function getAvailability(date) {
     facilities: []
   };
 
-  // 各施設のデータを整形
+  // 各施設のデータを整形（KUDOCHIを一番上に）
   const facilityInfo = [
-    { key: 'sakurado', name: 'SAUNA SAKURADO', url: 'https://sauna-sakurado.spa/reservation/' },
-    { key: 'giraffe', name: 'GIRAFFE', url: 'https://reserva.be/giraffe_minamitenjin' },
-    { key: 'kudochi', name: 'KUDOCHI福岡中洲', url: 'https://kudochi-sauna.hacomono.jp/reserve/schedule/6/25' },
-    { key: 'saunaOoo', name: 'SAUNA OOO FUKUOKA', url: 'https://sw.gflow.cloud/ooo-fukuoka/calendar_open' },
-    { key: 'base', name: 'BASE Private sauna', url: 'https://coubic.com/base-private-sauna/3957380/book/course_type' }
+    { key: 'kudochi', name: 'KUDOCHI福岡中洲', url: 'https://kudochi-sauna.hacomono.jp/reserve/schedule/6/25', mapUrl: 'https://maps.app.goo.gl/NfT48TAFCVMVhxXt5' },
+    { key: 'sakurado', name: 'SAUNA SAKURADO', url: 'https://sauna-sakurado.spa/reservation/', mapUrl: 'https://maps.app.goo.gl/QFBKHnmT2KM5ueud7' },
+    { key: 'giraffe', name: 'GIRAFFE', url: 'https://reserva.be/giraffe_minamitenjin', mapUrl: 'https://maps.app.goo.gl/kDm67Yrb2hKTgxRX6' },
+    { key: 'saunaOoo', name: 'SAUNA OOO FUKUOKA', url: 'https://sw.gflow.cloud/ooo-fukuoka/calendar_open', mapUrl: 'https://maps.app.goo.gl/cNWFE1Fxdmv4bvQR9' },
+    { key: 'base', name: 'BASE Private sauna', url: 'https://coubic.com/base-private-sauna/3957380/book/course_type', mapUrl: 'https://maps.app.goo.gl/rNPzxDpSdkxmHp4W9' }
   ];
 
   for (const info of facilityInfo) {
@@ -134,6 +134,7 @@ function getAvailability(date) {
       result.facilities.push({
         name: info.name,
         url: info.url,
+        mapUrl: info.mapUrl,
         error: facilityData.error,
         rooms: []
       });
@@ -154,6 +155,7 @@ function getAvailability(date) {
     result.facilities.push({
       name: info.name,
       url: info.url,
+      mapUrl: info.mapUrl,
       rooms
     });
   }
