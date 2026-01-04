@@ -633,6 +633,19 @@
       return { name: roomName, time, capacity, price };
     }
 
+    // 時間スロットのフォーマット（24時以上を翌X:XXに変換）
+    function formatTimeSlot(slot) {
+      return slot.replace(/(\d{1,2}):(\d{2})〜(\d{1,2}):(\d{2})/, (match, h1, m1, h2, m2) => {
+        const startHour = parseInt(h1);
+        const endHour = parseInt(h2);
+
+        let startStr = startHour + ':' + m1;
+        let endStr = endHour >= 24 ? '翌' + (endHour - 24) + ':' + m2 : endHour + ':' + m2;
+
+        return startStr + '〜' + endStr;
+      });
+    }
+
     // 施設の料金レンジを取得
     function getPriceRange(facilityKey) {
       if (!pricingData || !pricingData[facilityKey]) return '';
@@ -800,7 +813,7 @@
                   </div>
                   <div class="slots">
                     ${room.availableSlots && room.availableSlots.length > 0
-                      ? room.availableSlots.map(slot => '<span class="slot">' + slot + '</span>').join('')
+                      ? room.availableSlots.map(slot => '<span class="slot">' + formatTimeSlot(slot) + '</span>').join('')
                       : '<span class="no-slots">空きなし</span>'
                     }
                   </div>
