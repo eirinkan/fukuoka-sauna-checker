@@ -9,14 +9,14 @@
 
 const URL = 'https://sauna-sakurado.spa/reservation/';
 
-// 部屋名と定員・時間情報
+// 部屋名と定員・時間・価格情報（税込価格）
 const ROOM_INFO = {
-  '2-A': { display: '2-A（最大6名/140分）', capacity: 6, minutes: 140, price: 46860 },
-  '2-B': { display: '2-B（最大6名/140分）', capacity: 6, minutes: 140, price: 40900 },
-  '3-C': { display: '3-C（最大4名/125分）', capacity: 4, minutes: 125, price: 17600 },
-  '3-D': { display: '3-D（最大2名/125分）', capacity: 2, minutes: 125, price: 9000 },
-  '3-E': { display: '3-E（最大6名/135分）', capacity: 6, minutes: 135, price: 24750 },
-  '3-F': { display: '3-F（最大4名/95分）', capacity: 4, minutes: 95, price: 15400 }
+  '2-A': { display: '2-A（最大6名/140分）¥49,203', capacity: 6, minutes: 140, price: 49203 },
+  '2-B': { display: '2-B（最大6名/140分）¥42,945', capacity: 6, minutes: 140, price: 42945 },
+  '3-C': { display: '3-C（最大4名/125分）¥18,480', capacity: 4, minutes: 125, price: 18480 },
+  '3-D': { display: '3-D（最大2名/125分）¥9,450', capacity: 2, minutes: 125, price: 9450 },
+  '3-E': { display: '3-E（最大6名/135分）¥25,987', capacity: 6, minutes: 135, price: 25987 },
+  '3-F': { display: '3-F（最大4名/95分）¥16,170', capacity: 4, minutes: 95, price: 16170 }
 };
 const ROOM_NAMES = Object.keys(ROOM_INFO);
 

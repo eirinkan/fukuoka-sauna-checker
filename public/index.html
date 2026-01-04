@@ -507,6 +507,12 @@
       return keyMap[name] || null;
     }
 
+    // 部屋名の価格部分をオレンジ色でフォーマット
+    function formatRoomName(name) {
+      // ¥から始まる価格部分をオレンジ色のspanで囲む
+      return name.replace(/(¥[\d,]+[〜～]?[¥\d,]*[＋+]?[¥\d,／名]*)/g, '<span style="color:var(--accent)">$1</span>');
+    }
+
     // 施設の料金レンジを取得
     function getPriceRange(facilityKey) {
       if (!pricingData || !pricingData[facilityKey]) return '';
@@ -637,13 +643,10 @@
               </div>
             ` : `
               ${facility.rooms && facility.rooms.length > 0 ? facility.rooms.map(room => {
-                const price = getRoomPrice(facilityKey, room.name);
-                const priceStr = price ? '¥' + price.toLocaleString() : '';
                 return `
                 <div class="room">
                   <div class="room-name">
-                    <span>${room.name}</span>
-                    ${priceStr ? '<span class="room-price">' + priceStr + '</span>' : ''}
+                    <span>${formatRoomName(room.name)}</span>
                   </div>
                   <div class="slots">
                     ${room.availableSlots && room.availableSlots.length > 0
