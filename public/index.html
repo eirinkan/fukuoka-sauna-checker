@@ -719,15 +719,12 @@
           2: { weekday: { 80: 7800, 100: 9100, 120: 10300, 150: 12100 }, weekend: { 80: 8300, 100: 9600, 120: 10800, 150: 12600 } }
         }
       },
-      // 脈 MYAKU（定員のみ、料金は固定）
-      '休 KYU': { capacity: 3 },
-      '水 MIZU': { capacity: 2 },
-      '火 HI': { capacity: 4 },
-      // テンジンサウナ（定員のみ、料金は固定）
-      'Standard': { capacity: 2 },
-      'Deluxe': { capacity: 4 },
-      // サウナヨーガン（定員のみ、料金は固定）
-      'プライベートサウナ': { capacity: 3 }
+      // 脈 MYAKU（1人5,500円、人数で計算）
+      '休 KYU': { capacity: 3, perPerson: 5500 },
+      '水 MIZU': { capacity: 2, perPerson: 5500 },
+      '火 HI': { capacity: 4, perPerson: 5500 },
+      // サウナヨーガン（平日/土日祝で料金変動）
+      'プライベートサウナ': { capacity: 3, weekday: 9900, weekend: 13200 }
     };
 
     // 部屋名から料金計算キーを取得
@@ -743,9 +740,6 @@
       if (roomName.includes('休 KYU') || roomName.includes('休　KYU')) return '休 KYU';
       if (roomName.includes('水 MIZU') || roomName.includes('水　MIZU')) return '水 MIZU';
       if (roomName.includes('火 HI') || roomName.includes('火　HI')) return '火 HI';
-      // テンジンサウナ
-      if (roomName.includes('Standard')) return 'Standard';
-      if (roomName.includes('Deluxe')) return 'Deluxe';
       // サウナヨーガン
       if (roomName.includes('プライベートサウナ')) return 'プライベートサウナ';
       return null;
@@ -812,6 +806,20 @@
         const minPrice = prices[80];
         const maxPrice = prices[150];
         return `¥${minPrice.toLocaleString()}-${maxPrice.toLocaleString()}`;
+      }
+
+      // 脈 MYAKU（1人5,500円）
+      if (pricingKey && guestPricing[pricingKey] && guestPricing[pricingKey].perPerson) {
+        const data = guestPricing[pricingKey];
+        const price = data.perPerson * guests;
+        return `¥${price.toLocaleString()}`;
+      }
+
+      // サウナヨーガン（平日/土日祝）
+      if (pricingKey && guestPricing[pricingKey] && guestPricing[pricingKey].weekday) {
+        const data = guestPricing[pricingKey];
+        const price = isWeekend ? data.weekend : data.weekday;
+        return `¥${price.toLocaleString()}`;
       }
 
       return null; // 変更なし

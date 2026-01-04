@@ -8,6 +8,7 @@
  * - 時間枠: 10:00〜, 13:10〜, 16:20〜, 19:30〜
  *
  * Cloudflare保護あり → FlareSolverr使用
+ * カレンダーの日付をクリックして時間枠を取得
  */
 
 const flaresolverr = require('../flaresolverr');
@@ -16,14 +17,6 @@ const URL = 'https://reserva.be/saunayogan/reserve?mode=service_staff&search_evt
 
 // 部屋情報（統一フォーマット）
 const ROOM_NAME = 'プライベートサウナ（150分/定員3名）¥9,900-13,200';
-
-// 固定の時間枠（150分制）
-const TIME_SLOTS = [
-  '10:00〜12:30',
-  '13:10〜15:40',
-  '16:20〜18:50',
-  '19:30〜22:00'
-];
 
 // キャッシュされたCloudflare Cookies
 let cachedCookies = null;
@@ -99,97 +92,119 @@ async function scrape(browser) {
     await page.goto(URL, { waitUntil: 'networkidle2', timeout: 90000 });
     await new Promise(resolve => setTimeout(resolve, 5000));
 
-    // 「時間単位予約」を選択
-    try {
-      await page.evaluate(() => {
-        const radios = document.querySelectorAll('input[type="radio"]');
-        for (const radio of radios) {
-          const label = radio.closest('label') || radio.parentElement;
-          if (label && label.textContent.includes('時間単位')) {
-            radio.click();
-            return true;
-          }
-        }
-        return false;
-      });
-      await new Promise(resolve => setTimeout(resolve, 2000));
-
-      // 「決定」ボタンをクリック
-      await page.evaluate(() => {
-        const buttons = document.querySelectorAll('button, input[type="submit"], a');
-        for (const btn of buttons) {
-          if (btn.textContent?.includes('決定') || btn.value?.includes('決定')) {
-            btn.click();
-            return true;
-          }
-        }
-        return false;
-      });
-      await new Promise(resolve => setTimeout(resolve, 3000));
-    } catch (e) {
-      // 予約フロー操作に失敗しても続行
-    }
-
-    // カレンダーデータを取得
-    const calendarData = await page.evaluate(() => {
-      const data = {};
-
-      // input.timebox 要素から取得（RESERVAの標準形式）
-      const timeboxInputs = document.querySelectorAll('input.timebox');
-
-      if (timeboxInputs.length > 0) {
-        timeboxInputs.forEach(input => {
-          const targetGroup = input.dataset.targetgroup; // "2026-01-06"
-          const time = input.dataset.time; // "10:00～12:30"
-          const vacancy = input.dataset.vacancy;
-
-          if (targetGroup && time && vacancy === '1') {
-            const dateStr = targetGroup;
-            // 時間を統一形式に変換
-            const timeParts = time.split('～');
-            const timeRange = timeParts[0].replace(/^0/, '') + '〜' + timeParts[1].replace(/^0/, '');
-
-            if (!data[dateStr]) {
-              data[dateStr] = [];
-            }
-            if (!data[dateStr].includes(timeRange)) {
-              data[dateStr].push(timeRange);
-            }
-          }
-        });
-
-        // 結果をソート
-        for (const dateStr of Object.keys(data)) {
-          data[dateStr].sort((a, b) => {
-            const timeA = a.split(':').map(Number);
-            const timeB = b.split(':').map(Number);
-            return (timeA[0] * 60 + timeA[1]) - (timeB[0] * 60 + timeB[1]);
-          });
-        }
-      }
-
-      return data;
-    });
-
-    // 結果を整形
+    // 結果を格納
     const result = { dates: {} };
     const today = new Date();
 
-    // 7日分の日付を確保
+    // 7日分の日付を初期化
     for (let i = 0; i < 7; i++) {
       const date = new Date(today);
       date.setDate(today.getDate() + i);
       const dateStr = date.toISOString().split('T')[0];
       result.dates[dateStr] = {};
-      result.dates[dateStr][ROOM_NAME] = calendarData[dateStr] || [];
+      result.dates[dateStr][ROOM_NAME] = [];
     }
 
-    // 取得データをマージ
-    for (const [dateStr, times] of Object.entries(calendarData)) {
-      if (!result.dates[dateStr]) {
-        result.dates[dateStr] = {};
+    // カレンダーの日付リンクを取得してクリック
+    for (let i = 0; i < 7; i++) {
+      const targetDate = new Date(today);
+      targetDate.setDate(today.getDate() + i);
+      const dateStr = targetDate.toISOString().split('T')[0];
+      const month = targetDate.getMonth() + 1;
+      const day = targetDate.getDate();
+
+      // 日付をクリック
+      const clicked = await page.evaluate((m, d) => {
+        // カレンダーの日付リンクを探す
+        const links = document.querySelectorAll('a, td, div');
+        for (const el of links) {
+          const text = el.textContent?.trim();
+          // 日付だけのテキストを持つ要素を探す
+          if (text === String(d)) {
+            // クリック可能な要素か確認
+            const style = window.getComputedStyle(el);
+            if (style.cursor === 'pointer' || el.tagName === 'A' || el.onclick) {
+              el.click();
+              return true;
+            }
+          }
+        }
+        // aタグで日付を含むものを探す
+        const dateLinks = document.querySelectorAll('a[href*="calendar"], a[href*="reserve"], td.calendar-day, .day');
+        for (const link of dateLinks) {
+          if (link.textContent?.includes(String(d))) {
+            link.click();
+            return true;
+          }
+        }
+        return false;
+      }, month, day);
+
+      if (clicked) {
+        await new Promise(resolve => setTimeout(resolve, 2000));
+
+        // 時間枠を取得
+        const timeSlots = await page.evaluate(() => {
+          const slots = [];
+
+          // input.timebox 要素から取得（RESERVAの標準形式）
+          const timeboxInputs = document.querySelectorAll('input.timebox');
+          timeboxInputs.forEach(input => {
+            const time = input.dataset.time;
+            const vacancy = input.dataset.vacancy;
+            if (time && vacancy === '1') {
+              // 時間を統一形式に変換（10:00～12:30 → 10:00〜12:30）
+              const formattedTime = time.replace('～', '〜');
+              if (!slots.includes(formattedTime)) {
+                slots.push(formattedTime);
+              }
+            }
+          });
+
+          // 他の形式も試す
+          if (slots.length === 0) {
+            const timeElements = document.querySelectorAll('.time-slot, .available-time, [class*="time"]');
+            timeElements.forEach(el => {
+              const text = el.textContent?.trim();
+              if (text && text.match(/\d{1,2}:\d{2}/)) {
+                // 空きありの場合のみ
+                if (!el.classList.contains('disabled') && !el.classList.contains('unavailable')) {
+                  slots.push(text.replace('～', '〜'));
+                }
+              }
+            });
+          }
+
+          // ボタンやリンクで時間を含むものを探す
+          if (slots.length === 0) {
+            const buttons = document.querySelectorAll('button, a, label');
+            buttons.forEach(btn => {
+              const text = btn.textContent?.trim();
+              const timeMatch = text?.match(/(\d{1,2}:\d{2})[〜～](\d{1,2}:\d{2})/);
+              if (timeMatch) {
+                const time = `${timeMatch[1]}〜${timeMatch[2]}`;
+                if (!slots.includes(time)) {
+                  slots.push(time);
+                }
+              }
+            });
+          }
+
+          return slots;
+        });
+
+        if (timeSlots.length > 0) {
+          result.dates[dateStr][ROOM_NAME] = timeSlots.sort((a, b) => {
+            const [aH] = a.split(':').map(Number);
+            const [bH] = b.split(':').map(Number);
+            return aH - bH;
+          });
+        }
+
+        // 戻る（カレンダーに戻る）
+        await page.goBack({ waitUntil: 'networkidle2' }).catch(() => {});
+        await new Promise(resolve => setTimeout(resolve, 2000));
       }
-      result.dates[dateStr][ROOM_NAME] = times;
     }
 
     return result;

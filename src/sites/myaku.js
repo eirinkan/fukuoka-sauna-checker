@@ -102,11 +102,8 @@ async function scrape(browser) {
       const planInfo = roomInfo.plans[plan.planType];
       if (!planInfo) continue;
 
-      // 部屋名を決定（ナイトパックは別表示）
-      let displayName = roomInfo.displayName;
-      if (planInfo.isNight) {
-        displayName = displayName.replace(/（90分/, '（night');
-      }
+      // 部屋名（統一）
+      const displayName = roomInfo.displayName;
 
       for (const dateInfo of plan.dates) {
         // 日付を YYYY-MM-DD 形式に変換
