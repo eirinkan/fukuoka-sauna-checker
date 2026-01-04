@@ -735,9 +735,6 @@
 
     // 部屋の定員を取得
     function getRoomCapacity(facilityName, roomName) {
-      // KUDOCHI, SAKURADO は変更なし（定員チェックしない）
-      if (facilityName.includes('KUDOCHI') || facilityName.includes('SAKURADO')) return 99;
-
       // OOO
       const pricingKey = getPricingKey(roomName);
       if (pricingKey && guestPricing[pricingKey]) {
@@ -747,7 +744,7 @@
       // BASE
       if (facilityName.includes('BASE')) return guestPricing['BASE'].capacity;
 
-      // 部屋名から定員を抽出（定員N名）
+      // 部屋名から定員を抽出（定員N名）- KUDOCHI, SAKURADO含む全施設
       const match = roomName.match(/定員(\d+)名/);
       if (match) return parseInt(match[1]);
 
