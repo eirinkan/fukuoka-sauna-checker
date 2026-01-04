@@ -197,13 +197,6 @@
       color: white;
     }
 
-    .sub-header {
-      background: var(--bg-secondary);
-      padding: 4px 12px;
-      font-size: 0.6rem;
-      color: var(--text-muted);
-      border-bottom: 1px solid var(--border);
-    }
 
     button {
       padding: 6px 12px;
@@ -566,6 +559,7 @@
   <header>
     <div class="header-left">
       <h1>福岡サウナ空き状況</h1>
+      <span class="last-updated" id="lastUpdated">更新: -</span>
     </div>
     <div class="header-right">
       <div class="toggle-container">
@@ -574,10 +568,6 @@
       </div>
     </div>
   </header>
-
-  <div class="sub-header">
-    <span id="lastUpdated">更新: -</span>
-  </div>
 
   <div class="filter-bar">
     <select id="dateSelect"></select>
