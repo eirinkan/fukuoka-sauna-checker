@@ -71,6 +71,12 @@
       white-space: nowrap;
     }
 
+    .header-right {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
     .toggle-container {
       display: flex;
       align-items: center;
@@ -500,12 +506,14 @@
     <div class="header-left">
       <h1>福岡サウナ空き状況</h1>
       <span class="last-updated" id="lastUpdated">更新: -</span>
+    </div>
+    <div class="header-right">
       <div class="toggle-container">
         <span class="toggle-label">空きのみ</span>
         <div class="toggle-switch active" id="availableOnlyToggle"></div>
       </div>
+      <select id="dateSelect"></select>
     </div>
-    <select id="dateSelect"></select>
   </header>
 
   <main class="facilities" id="facilities">
