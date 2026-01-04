@@ -713,7 +713,9 @@
 
     // 選択日が週末かどうか
     function isSelectedDateWeekend() {
-      const date = new Date(dateSelect.value);
+      // YYYY-MM-DD形式をローカル時間で解析（タイムゾーン問題を回避）
+      const parts = dateSelect.value.split('-');
+      const date = new Date(parts[0], parts[1] - 1, parts[2]);
       const day = date.getDay();
       return day === 0 || day === 6; // 日曜=0, 土曜=6
     }
