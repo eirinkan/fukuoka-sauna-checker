@@ -96,15 +96,15 @@ const PRICING = {
   sakurado: {
     name: 'SAUNA SAKURADO',
     url: 'https://sauna-sakurado.spa/',
-    note: '会員制（初回お試し可）、部屋により設備・料金が異なる',
+    note: '会員制（初回お試し可）、平日/土日祝で料金が異なる',
     membershipFee: 22000, // 登録時のみ、年会費なし
     plans: [
-      { name: '3-D', price: 9450, duration: 125, capacity: 2 },
-      { name: '3-F', price: 16170, duration: 95, capacity: 4 },
-      { name: '3-C', price: 18480, duration: 125, capacity: 4 },
-      { name: '3-E', price: 25987, duration: 135, capacity: 6 },
-      { name: '2-B', price: 42945, duration: 140, capacity: 6 },
-      { name: '2-A', price: 49203, duration: 140, capacity: 6 }
+      { name: '3-D', weekday: 9000, weekend: 9450, duration: 125, capacity: 2 },
+      { name: '3-F', weekday: 15400, weekend: 16170, duration: 95, capacity: 4 },
+      { name: '3-C', weekday: 17600, weekend: 18480, duration: 125, capacity: 4 },
+      { name: '3-E', weekday: 24750, weekend: 25987, duration: 135, capacity: 6 },
+      { name: '2-B', weekday: 40900, weekend: 42945, duration: 140, capacity: 6 },
+      { name: '2-A', weekday: 46860, weekend: 49203, duration: 140, capacity: 6 }
     ]
   }
 };
