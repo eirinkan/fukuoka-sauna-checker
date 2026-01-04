@@ -221,14 +221,21 @@
       font-weight: 600;
     }
 
+    .price-range {
+      color: var(--accent);
+      font-size: 0.85rem;
+      font-weight: 600;
+      margin-right: 12px;
+    }
+
     .pricing-toggle {
       background: transparent;
       border: 1px solid var(--border);
       color: var(--text-secondary);
-      padding: 6px 12px;
-      font-size: 0.75rem;
-      border-radius: 6px;
-      margin-left: 10px;
+      padding: 4px 8px;
+      font-size: 0.7rem;
+      border-radius: 4px;
+      margin-left: 8px;
     }
 
     .pricing-toggle:hover {
@@ -242,7 +249,7 @@
       background: var(--bg-secondary);
       border-radius: 10px;
       padding: 12px 14px;
-      margin-top: 12px;
+      margin-bottom: 14px;
       font-size: 0.8rem;
       display: none;
     }
@@ -462,6 +469,31 @@
       return keyMap[name] || null;
     }
 
+    // 施設の料金レンジを取得
+    function getPriceRange(facilityKey) {
+      if (!pricingData || !pricingData[facilityKey]) return '';
+      const facility = pricingData[facilityKey];
+      const isWeekend = isSelectedDateWeekend();
+
+      let prices = [];
+      for (const plan of facility.plans) {
+        if (plan.weekday !== undefined) {
+          prices.push(isWeekend ? plan.weekend : plan.weekday);
+        } else if (plan.price !== undefined) {
+          prices.push(plan.price);
+        }
+      }
+
+      if (prices.length === 0) return '';
+      const min = Math.min(...prices);
+      const max = Math.max(...prices);
+
+      if (min === max) {
+        return '¥' + min.toLocaleString();
+      }
+      return '¥' + min.toLocaleString() + '〜' + '¥' + max.toLocaleString();
+    }
+
     // 施設の料金詳細を生成
     function getPricingDetails(facilityKey) {
       if (!pricingData || !pricingData[facilityKey]) return '';
@@ -528,12 +560,14 @@
 
       facilitiesContainer.innerHTML = data.facilities.map(facility => {
         const facilityKey = getFacilityKey(facility.name);
+        const priceRange = getPriceRange(facilityKey);
         return `
         <div class="facility">
           <div class="facility-header">
             <span class="facility-name">${facility.name}</span>
             <div>
-              <button class="pricing-toggle" onclick="togglePricing('${facilityKey}')">料金</button>
+              ${priceRange ? '<span class="price-range">' + priceRange + '</span>' : ''}
+              <button class="pricing-toggle" onclick="togglePricing('${facilityKey}')">詳細</button>
               <a href="${facility.url}" target="_blank" class="facility-link">予約 →</a>
             </div>
           </div>
