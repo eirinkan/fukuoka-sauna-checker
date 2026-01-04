@@ -92,6 +92,14 @@ async function scrape(browser) {
     await page.goto(URL, { waitUntil: 'networkidle2', timeout: 90000 });
     await new Promise(resolve => setTimeout(resolve, 5000));
 
+    // ローカル日付をYYYY-MM-DD形式で取得
+    function formatLocalDate(date) {
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const day = String(date.getDate()).padStart(2, '0');
+      return `${year}-${month}-${day}`;
+    }
+
     // 結果を格納
     const result = { dates: {} };
     const today = new Date();
@@ -100,7 +108,7 @@ async function scrape(browser) {
     for (let i = 0; i < 7; i++) {
       const date = new Date(today);
       date.setDate(today.getDate() + i);
-      const dateStr = date.toISOString().split('T')[0];
+      const dateStr = formatLocalDate(date);
       result.dates[dateStr] = {};
       result.dates[dateStr][ROOM_NAME] = [];
     }
@@ -109,7 +117,7 @@ async function scrape(browser) {
     for (let i = 0; i < 7; i++) {
       const targetDate = new Date(today);
       targetDate.setDate(today.getDate() + i);
-      const dateStr = targetDate.toISOString().split('T')[0];
+      const dateStr = formatLocalDate(targetDate);
       const year = targetDate.getFullYear();
       const month = String(targetDate.getMonth() + 1).padStart(2, '0');
       const day = String(targetDate.getDate()).padStart(2, '0');
