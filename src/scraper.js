@@ -129,12 +129,12 @@ function getAvailability(date) {
 
   // 各施設のデータを整形（KUDOCHIを一番上に）
   const facilityInfo = [
-    { key: 'kudochi', name: 'KUDOCHI福岡中洲', url: 'https://kudochi-sauna.hacomono.jp/reserve/schedule/6/25', mapUrl: 'https://www.google.com/maps/search/?api=1&query=福岡県福岡市博多区中洲5-1-7+SPOONビル' },
-    { key: 'sakurado', name: 'SAUNA SAKURADO', url: 'https://sauna-sakurado.spa/reservation/', mapUrl: 'https://www.google.com/maps/search/?api=1&query=福岡県福岡市博多区綱場町9-5' },
-    { key: 'giraffeMiamitenjin', name: 'GIRAFFE 南天神', url: 'https://reserva.be/giraffe_minamitenjin', mapUrl: 'https://www.google.com/maps/search/?api=1&query=SAUNA+Giraffe+南天神+福岡' },
-    { key: 'giraffeTenjin', name: 'GIRAFFE 天神', url: 'https://reserva.be/giraffe_minamitenjin', mapUrl: 'https://www.google.com/maps/search/?api=1&query=SAUNA+Giraffe+天神+福岡' },
-    { key: 'saunaOoo', name: 'SAUNA OOO FUKUOKA', url: 'https://sw.gflow.cloud/ooo-fukuoka/calendar_open', mapUrl: 'https://www.google.com/maps/search/?api=1&query=福岡県福岡市博多区中洲5-2-5+サフィール許斐' },
-    { key: 'base', name: 'BASE Private sauna', url: 'https://coubic.com/base-private-sauna/3957380/book/course_type', mapUrl: 'https://www.google.com/maps/search/?api=1&query=福岡市中央区薬院1-2-5+BASE+Private+sauna' }
+    { key: 'kudochi', name: 'KUDOCHI福岡中洲', url: 'https://kudochi-sauna.hacomono.jp/reserve/schedule/6/25', mapUrl: 'https://www.google.com/maps/search/?api=1&query=KUDOCHI+福岡中洲' },
+    { key: 'sakurado', name: 'SAUNA SAKURADO', url: 'https://sauna-sakurado.spa/reservation/', mapUrl: 'https://www.google.com/maps/search/?api=1&query=SAUNA+SAKURADO+福岡' },
+    { key: 'giraffeMiamitenjin', name: 'GIRAFFE 南天神', url: 'https://reserva.be/giraffe_minamitenjin', mapUrl: 'https://www.google.com/maps/search/?api=1&query=GIRAFFE+南天神+福岡' },
+    { key: 'giraffeTenjin', name: 'GIRAFFE 天神', url: 'https://reserva.be/giraffe_minamitenjin', mapUrl: 'https://www.google.com/maps/search/?api=1&query=GIRAFFE+天神+福岡' },
+    { key: 'saunaOoo', name: 'SAUNA OOO FUKUOKA', url: 'https://sw.gflow.cloud/ooo-fukuoka/calendar_open', mapUrl: 'https://www.google.com/maps/search/?api=1&query=SAUNA+OOO+FUKUOKA' },
+    { key: 'base', name: 'BASE Private sauna', url: 'https://coubic.com/base-private-sauna/3957380/book/course_type', mapUrl: 'https://www.google.com/maps/search/?api=1&query=BASE+Private+sauna+福岡' }
   ];
 
   for (const info of facilityInfo) {
