@@ -105,55 +105,61 @@ async function scrape(browser) {
       result.dates[dateStr][ROOM_NAME] = [];
     }
 
-    // カレンダーの日付リンクを取得してクリック
+    // カレンダーの日付をクリックして時間枠を取得
     for (let i = 0; i < 7; i++) {
       const targetDate = new Date(today);
       targetDate.setDate(today.getDate() + i);
       const dateStr = targetDate.toISOString().split('T')[0];
-      const month = targetDate.getMonth() + 1;
-      const day = targetDate.getDate();
+      const year = targetDate.getFullYear();
+      const month = String(targetDate.getMonth() + 1).padStart(2, '0');
+      const day = String(targetDate.getDate()).padStart(2, '0');
+      const dateId = `${year}-${month}-${day}`;
 
-      // 日付をクリック
-      const clicked = await page.evaluate((m, d) => {
-        // カレンダーの日付リンクを探す
-        const links = document.querySelectorAll('a, td, div');
-        for (const el of links) {
-          const text = el.textContent?.trim();
-          // 日付だけのテキストを持つ要素を探す
-          if (text === String(d)) {
-            // クリック可能な要素か確認
-            const style = window.getComputedStyle(el);
-            if (style.cursor === 'pointer' || el.tagName === 'A' || el.onclick) {
-              el.click();
-              return true;
-            }
+      // 日付をクリック（label[for="2026-01-07"] 形式）
+      const clicked = await page.evaluate((dateId, dayNum) => {
+        // 1. label[for="yyyy-mm-dd"] で直接探す
+        const label = document.querySelector(`label[for="${dateId}"]`);
+        if (label) {
+          label.click();
+          return 'label';
+        }
+
+        // 2. カレンダーセル内の日付テキストを探す
+        const cells = document.querySelectorAll('td, div.day, .calendar-day');
+        for (const cell of cells) {
+          if (cell.textContent?.trim() === String(dayNum)) {
+            cell.click();
+            return 'cell';
           }
         }
-        // aタグで日付を含むものを探す
-        const dateLinks = document.querySelectorAll('a[href*="calendar"], a[href*="reserve"], td.calendar-day, .day');
-        for (const link of dateLinks) {
-          if (link.textContent?.includes(String(d))) {
+
+        // 3. リンクで日付を含むものを探す
+        const links = document.querySelectorAll('a');
+        for (const link of links) {
+          if (link.textContent?.trim() === String(dayNum)) {
             link.click();
-            return true;
+            return 'link';
           }
         }
-        return false;
-      }, month, day);
+
+        return null;
+      }, dateId, targetDate.getDate());
 
       if (clicked) {
-        await new Promise(resolve => setTimeout(resolve, 2000));
+        // 時間枠のロードを待つ
+        await new Promise(resolve => setTimeout(resolve, 3000));
 
-        // 時間枠を取得
+        // 時間枠を取得（.userselect-time__item input.timebox）
         const timeSlots = await page.evaluate(() => {
           const slots = [];
 
-          // input.timebox 要素から取得（RESERVAの標準形式）
-          const timeboxInputs = document.querySelectorAll('input.timebox');
+          // RESERVA形式: input.timebox[data-time][data-vacancy="1"]
+          const timeboxInputs = document.querySelectorAll('.userselect-time__item input.timebox, input.timebox');
           timeboxInputs.forEach(input => {
             const time = input.dataset.time;
             const vacancy = input.dataset.vacancy;
+            // vacancy="1" は空きあり
             if (time && vacancy === '1') {
-              // 時間を統一形式に変換（10:00～12:30 → 10:00〜12:30）
               const formattedTime = time.replace('～', '〜');
               if (!slots.includes(formattedTime)) {
                 slots.push(formattedTime);
@@ -161,30 +167,41 @@ async function scrape(browser) {
             }
           });
 
-          // 他の形式も試す
+          // 代替: .item-label から時間を取得
           if (slots.length === 0) {
-            const timeElements = document.querySelectorAll('.time-slot, .available-time, [class*="time"]');
-            timeElements.forEach(el => {
-              const text = el.textContent?.trim();
-              if (text && text.match(/\d{1,2}:\d{2}/)) {
-                // 空きありの場合のみ
-                if (!el.classList.contains('disabled') && !el.classList.contains('unavailable')) {
-                  slots.push(text.replace('～', '〜'));
+            const itemLabels = document.querySelectorAll('.userselect-time__item .item-label');
+            itemLabels.forEach(label => {
+              const parent = label.closest('.userselect-time__item');
+              const input = parent?.querySelector('input.timebox');
+              if (input?.dataset.vacancy === '1') {
+                const text = label.textContent?.trim();
+                const timeMatch = text?.match(/(\d{1,2}:\d{2})[~〜～](\d{1,2}:\d{2})/);
+                if (timeMatch) {
+                  const time = `${timeMatch[1]}〜${timeMatch[2]}`;
+                  if (!slots.includes(time)) {
+                    slots.push(time);
+                  }
                 }
               }
             });
           }
 
-          // ボタンやリンクで時間を含むものを探す
+          // 代替: 一般的な時間ボタン/ラベル
           if (slots.length === 0) {
-            const buttons = document.querySelectorAll('button, a, label');
+            const buttons = document.querySelectorAll('button, label, .time-slot');
             buttons.forEach(btn => {
               const text = btn.textContent?.trim();
-              const timeMatch = text?.match(/(\d{1,2}:\d{2})[〜～](\d{1,2}:\d{2})/);
+              const timeMatch = text?.match(/(\d{1,2}:\d{2})[~〜～](\d{1,2}:\d{2})/);
               if (timeMatch) {
-                const time = `${timeMatch[1]}〜${timeMatch[2]}`;
-                if (!slots.includes(time)) {
-                  slots.push(time);
+                // 空きありのスタイルを確認
+                const isDisabled = btn.classList.contains('disabled') ||
+                                   btn.classList.contains('unavailable') ||
+                                   btn.closest('.disabled');
+                if (!isDisabled) {
+                  const time = `${timeMatch[1]}〜${timeMatch[2]}`;
+                  if (!slots.includes(time)) {
+                    slots.push(time);
+                  }
                 }
               }
             });
@@ -202,7 +219,7 @@ async function scrape(browser) {
         }
 
         // 戻る（カレンダーに戻る）
-        await page.goBack({ waitUntil: 'networkidle2' }).catch(() => {});
+        await page.goBack({ waitUntil: 'networkidle2', timeout: 30000 }).catch(() => {});
         await new Promise(resolve => setTimeout(resolve, 2000));
       }
     }

@@ -26,7 +26,7 @@ function getUrl() {
   return `https://spot-ly.jp/ja/hotels/176?checkinDatetime=${formatDate(today)}&checkoutDatetime=${formatDate(endDate)}`;
 }
 
-// 部屋情報
+// 部屋情報（通常価格とナイト価格を分離）
 const ROOM_INFO = {
   '休 -KYU-': {
     displayName: '休 KYU（90分/定員3名）¥9,130〜',
@@ -37,6 +37,7 @@ const ROOM_INFO = {
   },
   '水 -MIZU-': {
     displayName: '水 MIZU（90分/定員2名）¥6,600〜',
+    nightDisplayName: '水 MIZU（night/定員2名）¥8,800〜',
     capacity: 2,
     plans: {
       'ナイトパック': { times: ['01:00〜08:30'], isNight: true },
@@ -46,6 +47,7 @@ const ROOM_INFO = {
   },
   '火 -HI-': {
     displayName: '火 HI（90分/定員4名）¥7,150〜',
+    nightDisplayName: '火 HI（night/定員4名）¥10,120〜',
     capacity: 4,
     plans: {
       'ナイトパック': { times: ['00:30〜08:00'], isNight: true },
@@ -155,11 +157,10 @@ async function scrape(browser) {
       const planInfo = roomInfo.plans[plan.planType];
       if (!planInfo) continue;
 
-      // 部屋名を決定（ナイトパックは別表示）
-      let displayName = roomInfo.displayName;
-      if (planInfo.isNight) {
-        displayName = displayName.replace(/（90分/, '（night');
-      }
+      // 部屋名を決定（ナイトパックは別価格）
+      let displayName = planInfo.isNight && roomInfo.nightDisplayName
+        ? roomInfo.nightDisplayName
+        : roomInfo.displayName;
 
       for (const dateInfo of plan.dates) {
         const dateStr = dateInfo.fullDate;

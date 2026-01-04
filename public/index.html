@@ -303,13 +303,31 @@
       border-radius: 6px;
       text-decoration: none;
       font-weight: 600;
-      margin-right: 6px;
+      margin-right: 3px;
       transition: all 0.2s;
     }
 
     .map-btn:hover {
       background: var(--bg-card-hover);
       color: var(--text-secondary);
+    }
+
+    .stay-link {
+      background: rgba(100, 60, 140, 0.25);
+      border: 1px solid rgba(160, 128, 192, 0.4);
+      color: #a080c0;
+      padding: 3px 8px;
+      font-size: 0.7rem;
+      border-radius: 4px;
+      text-decoration: none;
+      font-weight: 600;
+      margin-left: auto;
+      transition: all 0.2s;
+    }
+
+    .stay-link:hover {
+      background: rgba(100, 60, 140, 0.35);
+      color: #c0a0e0;
     }
 
     .reserve-btn {
@@ -930,9 +948,9 @@
       return { name: roomName, time, capacity, price };
     }
 
-    // 部屋一覧をレンダリング（GIRAFFE/KUDOCHIはグループ化）
+    // 部屋一覧をレンダリング（GIRAFFE/KUDOCHI/MYAKUはグループ化）
     function renderRooms(facility) {
-      const shouldGroup = facility.name.includes('GIRAFFE') || facility.name.includes('KUDOCHI');
+      const shouldGroup = facility.name.includes('GIRAFFE') || facility.name.includes('KUDOCHI') || facility.name.includes('MYAKU');
       const isWeekend = isSelectedDateWeekend();
 
       // 定員チェックでフィルタリング（KUDOCHI/SAKURADOは除外しない）
@@ -955,10 +973,17 @@
             if (guestCount > capacity) return '';
           }
 
+          // 休 KYU の場合は宿泊リンクを表示
+          const isKyu = baseName.includes('休 KYU') || baseName.includes('休　KYU');
+          const kyuStayLink = isKyu && facility.kyuStayUrl
+            ? '<a href="' + facility.kyuStayUrl + '" target="_blank" class="stay-link">宿泊</a>'
+            : '';
+
           return `
             <div class="room room-grouped">
               <div class="room-header">
                 <span class="room-name">${baseName}</span>
+                ${kyuStayLink}
               </div>
               ${variants.map((v, idx) => {
                 // GIRAFFEの人数別料金計算
@@ -1154,8 +1179,11 @@
       try {
         const res = await fetch(`/api/availability?date=${date}`);
         const data = await res.json();
-        currentData = data;
-        renderFacilities(data);
+        // ディープコピーを作成（renderFacilitiesでの変更からcurrentDataを保護）
+        currentData = JSON.parse(JSON.stringify(data));
+        console.log('fetchAvailability: 脈rooms before render:', currentData.facilities.find(f => f.name.includes('MYAKU'))?.rooms?.length);
+        renderFacilities(currentData);
+        console.log('fetchAvailability: 脈rooms after render:', currentData.facilities.find(f => f.name.includes('MYAKU'))?.rooms?.length);
         updateStatus(data.lastUpdated);
       } catch (error) {
         facilitiesContainer.innerHTML = `
@@ -1177,8 +1205,8 @@
         return;
       }
 
-      // フィルタリング処理
-      let facilities = data.facilities.map(facility => {
+      // フィルタリング処理（元データを変更しないようにディープコピーを作成）
+      let facilities = JSON.parse(JSON.stringify(data.facilities)).map(facility => {
         if (facility.error || facility.linkOnly) return facility;
 
         // 各部屋のスロットを時間帯でフィルタリング
@@ -1212,14 +1240,21 @@
         return;
       }
 
+      // 休 KYU 宿泊リンクをグローバルに保存
+      let kyuStayUrlGlobal = null;
+
       facilitiesContainer.innerHTML = facilities.map(facility => {
         const facilityKey = getFacilityKey(facility.name);
+        // 脈の宿泊リンクを保存
+        if (facility.kyuStayUrl) {
+          kyuStayUrlGlobal = facility.kyuStayUrl;
+        }
         return `
         <div class="facility">
           <div class="facility-header">
             <span class="facility-name">${facility.name}</span>
             <div>
-              ${facility.hpUrl ? '<a href="' + facility.hpUrl + '" target="_blank" class="map-btn">HP</a>' : ''}
+              ${facility.hpUrl ? '<a href="' + facility.hpUrl + '" target="_blank" class="map-btn">公式HP</a>' : ''}
               ${facility.mapUrl ? '<a href="' + facility.mapUrl + '" target="_blank" class="map-btn">MAP</a>' : ''}
               <a href="${facility.url}" target="_blank" class="reserve-btn">予約</a>
             </div>
