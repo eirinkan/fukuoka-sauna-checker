@@ -2,7 +2,6 @@ require('dotenv').config();
 
 const express = require('express');
 const path = require('path');
-const cron = require('node-cron');
 const { scrapeAll, getAvailability } = require('./scraper');
 const { PRICING } = require('./pricing');
 
@@ -19,15 +18,20 @@ app.get('/api/availability', (req, res) => {
   res.json(data);
 });
 
-// API: 手動更新トリガー
-app.post('/api/refresh', async (req, res) => {
+// API: 手動更新トリガー（POST/GET両対応 - Cloud Scheduler用）
+const handleRefresh = async (req, res) => {
   try {
+    console.log(`[${new Date().toISOString()}] スクレイピング開始 (${req.method})`);
     await scrapeAll();
+    console.log(`[${new Date().toISOString()}] スクレイピング完了`);
     res.json({ success: true, message: '更新完了' });
   } catch (error) {
+    console.error(`[${new Date().toISOString()}] スクレイピングエラー:`, error.message);
     res.status(500).json({ success: false, message: error.message });
   }
-});
+};
+app.post('/api/refresh', handleRefresh);
+app.get('/api/refresh', handleRefresh);
 
 // API: ヘルスチェック
 app.get('/api/health', (req, res) => {
@@ -37,17 +41,6 @@ app.get('/api/health', (req, res) => {
 // API: 料金情報取得
 app.get('/api/pricing', (req, res) => {
   res.json(PRICING);
-});
-
-// 15分ごとに自動取得
-cron.schedule('*/15 * * * *', async () => {
-  console.log(`[${new Date().toISOString()}] 定期スクレイピング開始`);
-  try {
-    await scrapeAll();
-    console.log(`[${new Date().toISOString()}] 定期スクレイピング完了`);
-  } catch (error) {
-    console.error(`[${new Date().toISOString()}] スクレイピングエラー:`, error.message);
-  }
 });
 
 // サーバー起動
