@@ -53,41 +53,20 @@ function saveData(data) {
 
 // Puppeteerブラウザ起動（共通設定）
 async function launchBrowser() {
-  const executablePath = process.env.PUPPETEER_EXECUTABLE_PATH || null;
-  console.log('Chromium path:', executablePath || 'default');
-  console.log('Environment:', process.env.NODE_ENV || 'development');
+  console.log('Environment:', isCloudRun ? 'Cloud Run' : 'Local');
 
+  // 公式Puppeteer Dockerイメージ使用時はシンプルな設定で動作
   const launchOptions = {
     headless: 'new',
-    timeout: 120000,
-    protocolTimeout: 120000,
     args: [
       '--no-sandbox',
       '--disable-setuid-sandbox',
       '--disable-dev-shm-usage',
-      '--disable-gpu',
-      '--single-process',
-      '--no-zygote',
-      '--disable-extensions',
-      '--disable-software-rasterizer',
-      '--disable-background-networking',
-      '--disable-default-apps',
-      '--disable-sync',
-      '--disable-translate',
-      '--hide-scrollbars',
-      '--metrics-recording-only',
-      '--mute-audio',
-      '--no-first-run',
-      '--safebrowsing-disable-auto-update'
+      '--disable-gpu'
     ]
   };
 
-  // Cloud Run環境ではexecutablePathを設定
-  if (executablePath) {
-    launchOptions.executablePath = executablePath;
-  }
-
-  console.log('Launching browser with options:', JSON.stringify(launchOptions, null, 2));
+  console.log('Launching browser...');
 
   try {
     const browser = await puppeteer.launch(launchOptions);
@@ -95,7 +74,6 @@ async function launchBrowser() {
     return browser;
   } catch (error) {
     console.error('Browser launch failed:', error.message);
-    console.error('Stack:', error.stack);
     throw error;
   }
 }
