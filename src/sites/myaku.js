@@ -74,8 +74,9 @@ async function scrape(browser) {
     await new Promise(resolve => setTimeout(resolve, 3000));
 
     // 空室カレンダーがレンダリングされるまで待機（◯または✕が表示されるまで）
+    // 曜日ヘッダーは週の開始曜日によって変わるため、汎用的なパターンで待機
     await page.waitForFunction(
-      () => document.body.innerText.includes('月\n火\n水\n木\n金\n土\n日\n'),
+      () => document.body.innerText.includes('空室状況'),
       { timeout: 30000 }
     ).catch(() => {});
 
@@ -86,22 +87,25 @@ async function scrape(browser) {
       const bodyText = document.body.innerText;
       const plans = [];
 
-      // 週範囲を取得 (例: "1/05 (月) 〜 1/11 (日)")
-      const weekMatch = bodyText.match(/(\d{1,2})\/(\d{2})\s*\([月火水木金土日]\)\s*[〜~]\s*(\d{1,2})\/(\d{2})/);
+      // 週範囲を取得 (例: "1/06 (火) 〜 1/12 (月)")
+      const weekMatch = bodyText.match(/(\d{1,2})\/(\d{1,2})\s*\([月火水木金土日]\)\s*[〜~]\s*(\d{1,2})\/(\d{1,2})/);
       if (!weekMatch) return plans;
 
       const year = new Date().getFullYear();
       const currentMonth = new Date().getMonth() + 1;
 
+      // 曜日ヘッダーパターン（週の開始曜日によって変わる）
+      const weekdayPattern = /[月火水木金土日]\n[月火水木金土日]\n[月火水木金土日]\n[月火水木金土日]\n[月火水木金土日]\n[月火水木金土日]\n[月火水木金土日]\n/;
+
       // 各プランセクションを検索（大人\nで終了するパターン）
       const planPatterns = [
-        { room: '休 -KYU-', plan: '90分プラン（午後）', regex: /【休\s*-KYU-】90分プラン（午後）[\s\S]*?月\n火\n水\n木\n金\n土\n日\n([\s\S]*?)\n大人/ },
-        { room: '水 -MIZU-', plan: 'ナイトパック', regex: /【水\s*-MIZU-】ナイトパック[\s\S]*?月\n火\n水\n木\n金\n土\n日\n([\s\S]*?)\n大人/ },
-        { room: '水 -MIZU-', plan: '90分プラン（午後）', regex: /【水\s*-MIZU-】90分プラン（午後）[\s\S]*?月\n火\n水\n木\n金\n土\n日\n([\s\S]*?)\n大人/ },
-        { room: '水 -MIZU-', plan: '90分プラン（午前）', regex: /【水\s*-MIZU-】90分プラン（午前）[\s\S]*?月\n火\n水\n木\n金\n土\n日\n([\s\S]*?)\n大人/ },
-        { room: '火 -HI-', plan: 'ナイトパック', regex: /【火\s*-HI-】ナイトパック[\s\S]*?月\n火\n水\n木\n金\n土\n日\n([\s\S]*?)\n大人/ },
-        { room: '火 -HI-', plan: '90分プラン（午後）', regex: /【火\s*-HI-】90分プラン（午後）[\s\S]*?月\n火\n水\n木\n金\n土\n日\n([\s\S]*?)\n大人/ },
-        { room: '火 -HI-', plan: '90分プラン（午前）', regex: /【火\s*-HI-】90分プラン（午前）[\s\S]*?月\n火\n水\n木\n金\n土\n日\n([\s\S]*?)\n大人/ }
+        { room: '休 -KYU-', plan: '90分プラン（午後）', regex: /【休\s*-KYU-】90分プラン（午後）[\s\S]*?[月火水木金土日]\n[月火水木金土日]\n[月火水木金土日]\n[月火水木金土日]\n[月火水木金土日]\n[月火水木金土日]\n[月火水木金土日]\n([\s\S]*?)\n大人/ },
+        { room: '水 -MIZU-', plan: 'ナイトパック', regex: /【水\s*-MIZU-】ナイトパック[\s\S]*?[月火水木金土日]\n[月火水木金土日]\n[月火水木金土日]\n[月火水木金土日]\n[月火水木金土日]\n[月火水木金土日]\n[月火水木金土日]\n([\s\S]*?)\n大人/ },
+        { room: '水 -MIZU-', plan: '90分プラン（午後）', regex: /【水\s*-MIZU-】90分プラン（午後）[\s\S]*?[月火水木金土日]\n[月火水木金土日]\n[月火水木金土日]\n[月火水木金土日]\n[月火水木金土日]\n[月火水木金土日]\n[月火水木金土日]\n([\s\S]*?)\n大人/ },
+        { room: '水 -MIZU-', plan: '90分プラン（午前）', regex: /【水\s*-MIZU-】90分プラン（午前）[\s\S]*?[月火水木金土日]\n[月火水木金土日]\n[月火水木金土日]\n[月火水木金土日]\n[月火水木金土日]\n[月火水木金土日]\n[月火水木金土日]\n([\s\S]*?)\n大人/ },
+        { room: '火 -HI-', plan: 'ナイトパック', regex: /【火\s*-HI-】ナイトパック[\s\S]*?[月火水木金土日]\n[月火水木金土日]\n[月火水木金土日]\n[月火水木金土日]\n[月火水木金土日]\n[月火水木金土日]\n[月火水木金土日]\n([\s\S]*?)\n大人/ },
+        { room: '火 -HI-', plan: '90分プラン（午後）', regex: /【火\s*-HI-】90分プラン（午後）[\s\S]*?[月火水木金土日]\n[月火水木金土日]\n[月火水木金土日]\n[月火水木金土日]\n[月火水木金土日]\n[月火水木金土日]\n[月火水木金土日]\n([\s\S]*?)\n大人/ },
+        { room: '火 -HI-', plan: '90分プラン（午前）', regex: /【火\s*-HI-】90分プラン（午前）[\s\S]*?[月火水木金土日]\n[月火水木金土日]\n[月火水木金土日]\n[月火水木金土日]\n[月火水木金土日]\n[月火水木金土日]\n[月火水木金土日]\n([\s\S]*?)\n大人/ }
       ];
 
       for (const pattern of planPatterns) {
