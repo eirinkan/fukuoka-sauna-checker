@@ -55,6 +55,11 @@ async function getPageHtml(url, maxTimeout = TIMEOUT) {
  * @returns {Promise<boolean>}
  */
 async function isAvailable() {
+  // Cloud Run環境ではFlareSolverrは利用不可（即座にfalseを返す）
+  if (process.env.K_SERVICE) {
+    return false;
+  }
+
   try {
     const response = await axios.get(FLARESOLVERR_URL.replace('/v1', '/health'), {
       timeout: 5000
