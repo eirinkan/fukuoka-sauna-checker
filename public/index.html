@@ -156,41 +156,34 @@
 
     .filter-bar {
       background: var(--bg-secondary);
-      padding: 8px 12px;
+      padding: 6px 10px;
       border-bottom: 1px solid var(--border);
       display: flex;
       align-items: center;
-      gap: 8px;
+      justify-content: space-between;
+      gap: 6px;
       position: sticky;
-      top: 41px; /* header高さ分下げる */
+      top: 41px;
       z-index: 99;
-    }
-
-    .filter-label {
-      font-size: 0.75rem;
-      color: var(--text-muted);
-    }
-
-    .filter-separator {
-      font-size: 0.75rem;
-      color: var(--text-muted);
     }
 
     .filter-bar select {
       font-size: 12px;
       padding: 4px 6px;
-      padding-right: 20px;
+      padding-right: 18px;
+      flex-shrink: 0;
     }
 
     .time-presets {
       display: flex;
-      gap: 4px;
-      margin-left: 8px;
+      gap: 3px;
+      flex: 1;
+      justify-content: center;
     }
 
     .preset-btn {
-      padding: 3px 8px;
-      font-size: 11px;
+      padding: 4px 10px;
+      font-size: 12px;
       background: var(--bg-card);
       border: 1px solid var(--border);
       border-radius: 4px;
@@ -626,20 +619,9 @@
         font-size: 1rem;
       }
 
-      .filter-bar {
-        flex-wrap: wrap;
-        gap: 6px;
-      }
-
-      .time-presets {
-        margin-left: 0;
-        margin-top: 4px;
-        width: 100%;
-      }
-
       .preset-btn {
-        flex: 1;
-        text-align: center;
+        padding: 4px 8px;
+        font-size: 11px;
       }
     }
   </style>
@@ -661,61 +643,12 @@
 
   <div class="filter-bar">
     <select id="dateSelect"></select>
-    <span class="filter-separator">|</span>
-    <select id="startHour">
-      <option value="">開始</option>
-      <option value="8">8時</option>
-      <option value="9">9時</option>
-      <option value="10">10時</option>
-      <option value="11">11時</option>
-      <option value="12">12時</option>
-      <option value="13">13時</option>
-      <option value="14">14時</option>
-      <option value="15">15時</option>
-      <option value="16">16時</option>
-      <option value="17">17時</option>
-      <option value="18">18時</option>
-      <option value="19">19時</option>
-      <option value="20">20時</option>
-      <option value="21">21時</option>
-      <option value="22">22時</option>
-      <option value="23">23時</option>
-      <option value="24">24時</option>
-    </select>
-    <span class="filter-separator">-</span>
-    <select id="endHour">
-      <option value="">終了</option>
-      <option value="10">10時</option>
-      <option value="11">11時</option>
-      <option value="12">12時</option>
-      <option value="13">13時</option>
-      <option value="14">14時</option>
-      <option value="15">15時</option>
-      <option value="16">16時</option>
-      <option value="17">17時</option>
-      <option value="18">18時</option>
-      <option value="19">19時</option>
-      <option value="20">20時</option>
-      <option value="21">21時</option>
-      <option value="22">22時</option>
-      <option value="23">23時</option>
-      <option value="24">24時</option>
-      <option value="25">翌1時</option>
-      <option value="26">翌2時</option>
-      <option value="27">翌3時</option>
-      <option value="28">翌4時</option>
-      <option value="29">翌5時</option>
-      <option value="30">翌6時</option>
-      <option value="31">翌7時</option>
-      <option value="32">翌8時</option>
-    </select>
     <div class="time-presets">
       <button class="preset-btn" data-start="9" data-end="13">朝</button>
       <button class="preset-btn" data-start="12" data-end="18">昼</button>
       <button class="preset-btn" data-start="17" data-end="24">夜</button>
       <button class="preset-btn" data-start="23" data-end="32">深夜</button>
     </div>
-    <span class="filter-separator">|</span>
     <select id="guestCount">
       <option value="1">1名</option>
       <option value="2" selected>2名</option>
@@ -739,8 +672,6 @@
     const lastUpdatedEl = document.getElementById('lastUpdated');
     const availableOnlyToggle = document.getElementById('availableOnlyToggle');
     const facilitiesContainer = document.getElementById('facilities');
-    const startHourSelect = document.getElementById('startHour');
-    const endHourSelect = document.getElementById('endHour');
     const guestCountSelect = document.getElementById('guestCount');
 
     // 料金データ（グローバル）
@@ -1389,25 +1320,6 @@
       }
     });
 
-    // 時間帯フィルター変更
-    startHourSelect.addEventListener('change', () => {
-      const val = startHourSelect.value;
-      filterStartHour = val === '' ? null : parseInt(val);
-      updatePresetButtons();
-      if (currentData) {
-        renderFacilities(currentData);
-      }
-    });
-
-    endHourSelect.addEventListener('change', () => {
-      const val = endHourSelect.value;
-      filterEndHour = val === '' ? null : parseInt(val);
-      updatePresetButtons();
-      if (currentData) {
-        renderFacilities(currentData);
-      }
-    });
-
     // 時間帯プリセットボタン
     const presetBtns = document.querySelectorAll('.preset-btn');
     presetBtns.forEach(btn => {
@@ -1419,13 +1331,9 @@
         if (filterStartHour === start && filterEndHour === end) {
           filterStartHour = null;
           filterEndHour = null;
-          startHourSelect.value = '';
-          endHourSelect.value = '';
         } else {
           filterStartHour = start;
           filterEndHour = end;
-          startHourSelect.value = start;
-          endHourSelect.value = end;
         }
 
         updatePresetButtons();
