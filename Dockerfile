@@ -1,27 +1,29 @@
 FROM ghcr.io/puppeteer/puppeteer:24.1.1
 
-# 日本語フォントをインストール
+# rootユーザーでセットアップ
 USER root
+
+# 日本語フォントをインストール
 RUN apt-get update && apt-get install -y \
     fonts-ipafont-gothic \
     fonts-wqy-zenhei \
     --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
 
-# pptruser（Puppeteer公式イメージのデフォルトユーザー）に戻す
-USER pptruser
+# 作業ディレクトリを作成し権限を設定
+RUN mkdir -p /app/data && chown -R pptruser:pptruser /app
 
 WORKDIR /app
 
-# 依存関係をインストール
-COPY package*.json ./
+# 依存関係ファイルをコピーしてインストール
+COPY --chown=pptruser:pptruser package*.json ./
 RUN npm ci --only=production
 
 # アプリケーションをコピー
-COPY . .
+COPY --chown=pptruser:pptruser . .
 
-# データディレクトリを作成
-RUN mkdir -p /app/data
+# pptruser に切り替え
+USER pptruser
 
 # Cloud RunはPORT環境変数を使用
 ENV PORT=8080
