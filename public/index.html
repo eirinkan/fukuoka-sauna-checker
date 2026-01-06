@@ -177,8 +177,7 @@
     .time-presets {
       display: flex;
       gap: 3px;
-      flex: 1;
-      justify-content: center;
+      margin-left: auto;
     }
 
     .preset-btn {
@@ -643,12 +642,6 @@
 
   <div class="filter-bar">
     <select id="dateSelect"></select>
-    <div class="time-presets">
-      <button class="preset-btn" data-start="9" data-end="13">朝</button>
-      <button class="preset-btn" data-start="12" data-end="18">昼</button>
-      <button class="preset-btn" data-start="17" data-end="24">夜</button>
-      <button class="preset-btn" data-start="23" data-end="32">深夜</button>
-    </div>
     <select id="guestCount">
       <option value="1">1名</option>
       <option value="2" selected>2名</option>
@@ -658,6 +651,12 @@
       <option value="6">6名</option>
       <option value="7">7名</option>
     </select>
+    <div class="time-presets">
+      <button class="preset-btn" data-start="9" data-end="13">朝</button>
+      <button class="preset-btn" data-start="12" data-end="18">昼</button>
+      <button class="preset-btn" data-start="17" data-end="24">夜</button>
+      <button class="preset-btn" data-start="23" data-end="32">深夜</button>
+    </div>
   </div>
 
   <main class="facilities" id="facilities">
