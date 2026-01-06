@@ -1,5 +1,6 @@
 {
   "hosting": {
+    "site": "private-sauna-availability",
     "public": "public",
     "ignore": [
       "firebase.json",
