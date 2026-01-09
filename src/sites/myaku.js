@@ -7,58 +7,84 @@
  * - 水 MIZU (2名): ナイトパック ¥8,800〜、90分（午前/午後）¥6,600〜
  * - 火 HI (4名): ナイトパック ¥10,120〜、90分（午前/午後）¥7,150〜
  *
- * 構造: 週間カレンダー形式（◯/✕で日単位の空き表示）
+ * 注意: spot-lyは日単位の空き状況（◯/✕）のみ提供。
+ * 詳細な時間帯別空き状況は予約サイトで確認が必要。
  */
 
-// 1週間分のURLを生成
-function getUrl() {
-  const today = new Date();
-  const endDate = new Date(today);
-  endDate.setDate(today.getDate() + 6);
+const BASE_URL = 'https://spot-ly.jp/ja/hotels/176';
 
-  const formatDate = (d) => {
-    const year = d.getFullYear();
-    const month = String(d.getMonth() + 1).padStart(2, '0');
-    const day = String(d.getDate()).padStart(2, '0');
-    return `${year}-${month}-${day}+00%3A00%3A00`;
-  };
+/**
+ * メインページから日単位の空き状況を取得（従来方式・フォールバック用）
+ */
+async function scrapeDailyAvailability(page) {
+  await page.goto(BASE_URL, { waitUntil: 'networkidle2', timeout: 60000 });
+  await new Promise(resolve => setTimeout(resolve, 3000));
 
-  return `https://spot-ly.jp/ja/hotels/176?checkinDatetime=${formatDate(today)}&checkoutDatetime=${formatDate(endDate)}`;
+  const plansData = await page.evaluate(() => {
+    const bodyText = document.body.innerText;
+    const plans = [];
+    const currentYear = new Date().getFullYear();
+    const currentMonth = new Date().getMonth() + 1;
+    const today = new Date().getDate();
+
+    // 各プランのパターン
+    const planPatterns = [
+      { room: '休 KYU', plan: '90分プラン（午後）', displayName: '休 KYU（90分/定員3名）¥9,130〜', times: ['11:30〜13:00', '13:30〜15:00', '15:30〜17:00', '17:30〜19:00', '19:30〜21:00'] },
+      { room: '水 MIZU', plan: 'ナイトパック', displayName: '水 MIZU（night/定員2名）¥8,800〜', times: ['01:00〜08:30'], isNight: true },
+      { room: '水 MIZU', plan: '90分プラン（午後）', displayName: '水 MIZU（90分/定員2名）¥6,600〜', times: ['13:00〜14:30', '15:00〜16:30', '17:00〜18:30', '19:00〜20:30', '21:00〜22:30', '23:00〜00:30'] },
+      { room: '水 MIZU', plan: '90分プラン（午前）', displayName: '水 MIZU（90分/定員2名）¥6,600〜', times: ['09:00〜10:30', '11:00〜12:30'] },
+      { room: '火 HI', plan: 'ナイトパック', displayName: '火 HI（night/定員4名）¥10,120〜', times: ['00:30〜08:00'], isNight: true },
+      { room: '火 HI', plan: '90分プラン（午後）', displayName: '火 HI（90分/定員4名）¥7,150〜', times: ['14:30〜16:00', '16:30〜18:00', '18:30〜20:00', '20:30〜22:00', '22:30〜00:00'] },
+      { room: '火 HI', plan: '90分プラン（午前）', displayName: '火 HI（90分/定員4名）¥7,150〜', times: ['08:30〜10:00', '10:30〜12:00', '12:30〜14:00'] }
+    ];
+
+    for (const pattern of planPatterns) {
+      // プランセクションを探す
+      const regex = new RegExp(
+        `【${pattern.room.replace(' ', '\\s*-?')}[^】]*】${pattern.plan}[\\s\\S]*?` +
+        `([月火水木金土日]\\n[月火水木金土日]\\n[月火水木金土日]\\n[月火水木金土日]\\n[月火水木金土日]\\n[月火水木金土日]\\n[月火水木金土日]\\n)` +
+        `([\\s\\S]*?)\\n大人`
+      );
+
+      const match = bodyText.match(regex);
+      if (match) {
+        const calendarText = match[2];
+        const dateAvailPairs = calendarText.trim().split('\n');
+
+        const dates = [];
+        for (let i = 0; i < dateAvailPairs.length - 1; i += 2) {
+          const dateStr = dateAvailPairs[i];
+          const avail = dateAvailPairs[i + 1];
+
+          const dateMatch = dateStr.match(/(\d{1,2})\/(\d{1,2})/);
+          if (dateMatch) {
+            let month = parseInt(dateMatch[1]);
+            let day = parseInt(dateMatch[2]);
+            let year = currentYear;
+
+            if (month === 1 && currentMonth === 12) {
+              year = currentYear + 1;
+            }
+
+            dates.push({
+              date: `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`,
+              available: avail === '◯'
+            });
+          }
+        }
+
+        plans.push({
+          ...pattern,
+          dates
+        });
+      }
+    }
+
+    return plans;
+  });
+
+  return plansData;
 }
-
-// 部屋情報（通常価格とナイト価格を分離）
-const ROOM_INFO = {
-  '休 -KYU-': {
-    displayName: '休 KYU（90分/定員3名）¥9,130〜',
-    capacity: 3,
-    plans: {
-      '90分プラン（午後）': { times: ['11:30〜13:00', '13:30〜15:00', '15:30〜17:00', '17:30〜19:00', '19:30〜21:00'] }
-    }
-  },
-  '水 -MIZU-': {
-    displayName: '水 MIZU（90分/定員2名）¥6,600〜',
-    nightDisplayName: '水 MIZU（night/定員2名）¥8,800〜',
-    capacity: 2,
-    plans: {
-      'ナイトパック': { times: ['01:00〜08:30'], isNight: true },
-      '90分プラン（午後）': { times: ['13:00〜14:30', '15:00〜16:30', '17:00〜18:30', '19:00〜20:30', '21:00〜22:30', '23:00〜00:30'] },
-      '90分プラン（午前）': { times: ['09:00〜10:30', '11:00〜12:30'] }
-    }
-  },
-  '火 -HI-': {
-    displayName: '火 HI（90分/定員4名）¥7,150〜',
-    nightDisplayName: '火 HI（night/定員4名）¥10,120〜',
-    capacity: 4,
-    plans: {
-      'ナイトパック': { times: ['00:30〜08:00'], isNight: true },
-      '90分プラン（午後）': { times: ['14:30〜16:00', '16:30〜18:00', '18:30〜20:00', '20:30〜22:00', '22:30〜00:00'] },
-      '90分プラン（午前）': { times: ['08:30〜10:00', '10:30〜12:00', '12:30〜14:00'] }
-    }
-  }
-};
-
-// 休 KYU 宿泊プランリンク
-const KYU_STAY_URL = 'https://hotel.travel.rakuten.co.jp/hotelinfo/plan/?f_no=191639&f_flg=PLAN';
 
 async function scrape(browser) {
   const page = await browser.newPage();
@@ -66,112 +92,22 @@ async function scrape(browser) {
   await page.setViewport({ width: 1280, height: 900 });
 
   try {
-    const url = getUrl();
-    await page.goto(url, { waitUntil: 'networkidle2', timeout: 60000 });
-
-    // ページ下部までスクロールしてコンテンツをロード
-    await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
-    await new Promise(resolve => setTimeout(resolve, 3000));
-
-    // 空室カレンダーがレンダリングされるまで待機（◯または✕が表示されるまで）
-    // 曜日ヘッダーは週の開始曜日によって変わるため、汎用的なパターンで待機
-    await page.waitForFunction(
-      () => document.body.innerText.includes('空室状況'),
-      { timeout: 30000 }
-    ).catch(() => {});
-
-    await new Promise(resolve => setTimeout(resolve, 3000));
-
-    // ページからプランデータを抽出
-    const plansData = await page.evaluate(() => {
-      const bodyText = document.body.innerText;
-      const plans = [];
-
-      // 週範囲を取得 (例: "1/06 (火) 〜 1/12 (月)")
-      const weekMatch = bodyText.match(/(\d{1,2})\/(\d{1,2})\s*\([月火水木金土日]\)\s*[〜~]\s*(\d{1,2})\/(\d{1,2})/);
-      if (!weekMatch) return plans;
-
-      const year = new Date().getFullYear();
-      const currentMonth = new Date().getMonth() + 1;
-
-      // 曜日ヘッダーパターン（週の開始曜日によって変わる）
-      const weekdayPattern = /[月火水木金土日]\n[月火水木金土日]\n[月火水木金土日]\n[月火水木金土日]\n[月火水木金土日]\n[月火水木金土日]\n[月火水木金土日]\n/;
-
-      // 各プランセクションを検索（大人\nで終了するパターン）
-      const planPatterns = [
-        { room: '休 -KYU-', plan: '90分プラン（午後）', regex: /【休\s*-KYU-】90分プラン（午後）[\s\S]*?[月火水木金土日]\n[月火水木金土日]\n[月火水木金土日]\n[月火水木金土日]\n[月火水木金土日]\n[月火水木金土日]\n[月火水木金土日]\n([\s\S]*?)\n大人/ },
-        { room: '水 -MIZU-', plan: 'ナイトパック', regex: /【水\s*-MIZU-】ナイトパック[\s\S]*?[月火水木金土日]\n[月火水木金土日]\n[月火水木金土日]\n[月火水木金土日]\n[月火水木金土日]\n[月火水木金土日]\n[月火水木金土日]\n([\s\S]*?)\n大人/ },
-        { room: '水 -MIZU-', plan: '90分プラン（午後）', regex: /【水\s*-MIZU-】90分プラン（午後）[\s\S]*?[月火水木金土日]\n[月火水木金土日]\n[月火水木金土日]\n[月火水木金土日]\n[月火水木金土日]\n[月火水木金土日]\n[月火水木金土日]\n([\s\S]*?)\n大人/ },
-        { room: '水 -MIZU-', plan: '90分プラン（午前）', regex: /【水\s*-MIZU-】90分プラン（午前）[\s\S]*?[月火水木金土日]\n[月火水木金土日]\n[月火水木金土日]\n[月火水木金土日]\n[月火水木金土日]\n[月火水木金土日]\n[月火水木金土日]\n([\s\S]*?)\n大人/ },
-        { room: '火 -HI-', plan: 'ナイトパック', regex: /【火\s*-HI-】ナイトパック[\s\S]*?[月火水木金土日]\n[月火水木金土日]\n[月火水木金土日]\n[月火水木金土日]\n[月火水木金土日]\n[月火水木金土日]\n[月火水木金土日]\n([\s\S]*?)\n大人/ },
-        { room: '火 -HI-', plan: '90分プラン（午後）', regex: /【火\s*-HI-】90分プラン（午後）[\s\S]*?[月火水木金土日]\n[月火水木金土日]\n[月火水木金土日]\n[月火水木金土日]\n[月火水木金土日]\n[月火水木金土日]\n[月火水木金土日]\n([\s\S]*?)\n大人/ },
-        { room: '火 -HI-', plan: '90分プラン（午前）', regex: /【火\s*-HI-】90分プラン（午前）[\s\S]*?[月火水木金土日]\n[月火水木金土日]\n[月火水木金土日]\n[月火水木金土日]\n[月火水木金土日]\n[月火水木金土日]\n[月火水木金土日]\n([\s\S]*?)\n大人/ }
-      ];
-
-      for (const pattern of planPatterns) {
-        const match = bodyText.match(pattern.regex);
-        if (match) {
-          // カレンダーデータを解析 (例: "1/5\n◯\n1/6\n◯\n...")
-          const calendarText = match[1];
-          const dateAvailPairs = calendarText.trim().split('\n');
-
-          const dates = [];
-          for (let i = 0; i < dateAvailPairs.length - 1; i += 2) {
-            const dateStr = dateAvailPairs[i];
-            const avail = dateAvailPairs[i + 1];
-
-            const dateMatch = dateStr.match(/(\d{1,2})\/(\d{1,2})/);
-            if (dateMatch) {
-              let month = parseInt(dateMatch[1]);
-              let day = parseInt(dateMatch[2]);
-              let dateYear = year;
-
-              // 1月で現在が12月なら来年
-              if (month === 1 && currentMonth === 12) {
-                dateYear = year + 1;
-              }
-
-              dates.push({
-                date: `${month}/${day}`,
-                fullDate: `${dateYear}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`,
-                available: avail === '◯'
-              });
-            }
-          }
-
-          plans.push({
-            room: pattern.room,
-            planType: pattern.plan,
-            dates: dates
-          });
-        }
-      }
-
-      return plans;
-    });
-
-    // 結果を整形
     const result = { dates: {} };
-    const currentYear = new Date().getFullYear();
 
-    for (const plan of plansData) {
-      const roomInfo = ROOM_INFO[plan.room];
-      if (!roomInfo) continue;
+    // 日単位の空き状況を取得（フォールバック用）
+    console.log('    → 日単位の空き状況を取得中...');
+    const dailyData = await scrapeDailyAvailability(page);
 
-      const planInfo = roomInfo.plans[plan.planType];
-      if (!planInfo) continue;
-
-      // 部屋名を決定（ナイトパックは別価格）
-      let displayName = planInfo.isNight && roomInfo.nightDisplayName
-        ? roomInfo.nightDisplayName
-        : roomInfo.displayName;
-
+    // 日単位データを結果に変換
+    // spot-lyは日単位の空き情報のみ提供のため、「空き枠あり」として表示
+    for (const plan of dailyData) {
       for (const dateInfo of plan.dates) {
-        let dateStr = dateInfo.fullDate;
+        if (!dateInfo.available) continue;
 
-        // ナイトパックの場合、日付を1日前にする（前日夜から翌朝のため）
-        // 例: 1/6の01:00〜08:30は、1/5の夜に開始するので1/5の空きとして表示
-        if (planInfo.isNight) {
+        let dateStr = dateInfo.date;
+
+        // ナイトパックは前日として表示
+        if (plan.isNight) {
           const d = new Date(dateStr);
           d.setDate(d.getDate() - 1);
           dateStr = d.toISOString().split('T')[0];
@@ -181,43 +117,20 @@ async function scrape(browser) {
           result.dates[dateStr] = {};
         }
 
-        // 空きがある日は時間枠を設定、なければ空配列
-        if (dateInfo.available) {
-          // 同じ部屋の複数プランをマージ
-          if (!result.dates[dateStr][displayName]) {
-            result.dates[dateStr][displayName] = [];
-          }
-          // 時間枠を追加（重複排除）
-          for (const time of planInfo.times) {
-            if (!result.dates[dateStr][displayName].includes(time)) {
-              result.dates[dateStr][displayName].push(time);
-            }
-          }
-        } else {
-          // 空きなしの場合も部屋は表示（空配列）
-          if (!result.dates[dateStr][displayName]) {
-            result.dates[dateStr][displayName] = [];
-          }
+        if (!result.dates[dateStr][plan.displayName]) {
+          result.dates[dateStr][plan.displayName] = [];
+        }
+
+        // 日単位の空き情報として「空き枠あり」を1つだけ追加
+        // ※詳細な時間帯はspot-lyサイトで確認が必要
+        const availabilityNote = '空き枠あり（詳細は予約サイトで）';
+        if (!result.dates[dateStr][plan.displayName].includes(availabilityNote)) {
+          result.dates[dateStr][plan.displayName].push(availabilityNote);
         }
       }
     }
 
-    // 時間枠をソート
-    for (const dateStr of Object.keys(result.dates)) {
-      for (const roomName of Object.keys(result.dates[dateStr])) {
-        result.dates[dateStr][roomName].sort((a, b) => {
-          const aStart = a.split('〜')[0];
-          const bStart = b.split('〜')[0];
-          const [aH, aM] = aStart.split(':').map(Number);
-          const [bH, bM] = bStart.split(':').map(Number);
-          // 深夜帯（0-6時）は24時以降として扱う
-          const aHour = aH < 7 ? aH + 24 : aH;
-          const bHour = bH < 7 ? bH + 24 : bH;
-          return (aHour * 60 + aM) - (bHour * 60 + bM);
-        });
-      }
-    }
-
+    console.log(`    → 脈: ${Object.keys(result.dates).length}日分のデータ取得`);
     return result;
   } finally {
     await page.close();
