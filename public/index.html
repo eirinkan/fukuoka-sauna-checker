@@ -997,7 +997,7 @@
         // 同じ部屋名をグループ化
         const groups = groupRoomsByBaseName(filteredRooms);
 
-        // MYAKU専用: 部屋ごとに時間帯をまとめて表示
+        // MYAKU専用: 部屋ごとに表示（通常プラン＋ナイトパック形式、GIRAFFEと同様）
         if (facility.name.includes('MYAKU') || facility.name.includes('脈')) {
           return Object.entries(groups).map(([baseName, variants]) => {
             // 休 KYU の場合は宿泊リンクを表示
@@ -1006,72 +1006,101 @@
               ? '<a href="' + facility.kyuStayUrl + '" target="_blank" class="stay-link">宿泊</a>'
               : '';
 
-            // 定員と時間を取得（最初のvariantから）
+            // 通常プラン（午前/午後）とナイトパックを分離
+            const dayVariants = variants.filter(v => !v.isNight);
+            const nightVariants = variants.filter(v => v.isNight);
+
+            // 通常プランの情報を取得
             const capacity = variants[0].formatted.capacity;
-            // 時間から「午前」「午後」を除去して統一
             let duration = '90分';
-            for (const v of variants) {
-              if (v.formatted.time && v.formatted.time !== 'night') {
+            let dayPrice = '';
+            for (const v of dayVariants) {
+              if (v.formatted.time) {
                 duration = v.formatted.time.replace(/午前|午後/g, '');
-                break;
               }
+              if (v.formatted.price) dayPrice = v.formatted.price;
             }
 
-            // 全variantの時間枠をマージ（重複除去）
-            const allSlots = [];
-            const seenSlots = new Set();
-            for (const v of variants) {
+            // 通常プランの時間枠をマージ（重複除去）
+            const daySlots = [];
+            const seenDaySlots = new Set();
+            for (const v of dayVariants) {
               if (v.availableSlots) {
                 for (const slot of v.availableSlots) {
-                  // "空き枠あり"は特別扱い
-                  if (slot === '空き枠あり') {
-                    if (!seenSlots.has(slot)) {
-                      seenSlots.add(slot);
-                      allSlots.push({ slot, isNight: v.isNight });
-                    }
-                  } else {
-                    const key = slot + (v.isNight ? '_night' : '');
-                    if (!seenSlots.has(key)) {
-                      seenSlots.add(key);
-                      allSlots.push({ slot, isNight: v.isNight });
-                    }
+                  if (!seenDaySlots.has(slot)) {
+                    seenDaySlots.add(slot);
+                    daySlots.push(slot);
+                  }
+                }
+              }
+            }
+            // 時間順にソート
+            daySlots.sort((a, b) => {
+              if (a === '空き枠あり') return -1;
+              if (b === '空き枠あり') return 1;
+              const aMatch = a.match(/(\d{1,2}):(\d{2})/);
+              const bMatch = b.match(/(\d{1,2}):(\d{2})/);
+              if (aMatch && bMatch) {
+                return (parseInt(aMatch[1]) * 60 + parseInt(aMatch[2])) - (parseInt(bMatch[1]) * 60 + parseInt(bMatch[2]));
+              }
+              return 0;
+            });
+
+            // ナイトパックの情報
+            let nightPrice = '';
+            const nightSlots = [];
+            for (const v of nightVariants) {
+              if (v.formatted.price) nightPrice = v.formatted.price;
+              if (v.availableSlots) {
+                for (const slot of v.availableSlots) {
+                  if (!nightSlots.includes(slot)) {
+                    nightSlots.push(slot);
                   }
                 }
               }
             }
 
-            // 時間順にソート
-            allSlots.sort((a, b) => {
-              if (a.slot === '空き枠あり') return -1;
-              if (b.slot === '空き枠あり') return 1;
-              const aTime = a.slot.match(/(\d{1,2}):(\d{2})/);
-              const bTime = b.slot.match(/(\d{1,2}):(\d{2})/);
-              if (aTime && bTime) {
-                const aMin = parseInt(aTime[1]) * 60 + parseInt(aTime[2]);
-                const bMin = parseInt(bTime[1]) * 60 + parseInt(bTime[2]);
-                return aMin - bMin;
-              }
-              return 0;
-            });
-
-            return `
-              <div class="room">
+            // 通常プランの表示
+            let html = `
+              <div class="room room-grouped">
                 <div class="room-header">
                   <span class="room-name">${baseName}</span>
                   ${kyuStayLink}
-                  <div class="room-meta">
+                </div>
+                <div class="room-variant">
+                  <div class="variant-meta">
+                    ${dayPrice ? '<span class="room-price">' + dayPrice + '</span>' : ''}
                     <span class="time-label">${duration}</span>
                     ${capacity ? '<span class="capacity-label">' + capacity + '人</span>' : ''}
                   </div>
-                </div>
-                <div class="slots">
-                  ${allSlots.length > 0
-                    ? allSlots.map(s => '<span class="slot">' + formatTimeSlot(s.slot, s.isNight) + '</span>').join('')
-                    : '<span class="no-slots">空きなし</span>'
-                  }
-                </div>
-              </div>
-            `;
+                  <div class="slots">
+                    ${daySlots.length > 0
+                      ? daySlots.map(slot => '<span class="slot">' + formatTimeSlot(slot) + '</span>').join('')
+                      : '<span class="no-slots">空きなし</span>'
+                    }
+                  </div>
+                </div>`;
+
+            // ナイトパックがある場合は追加
+            if (nightVariants.length > 0) {
+              html += `
+                <div class="room-variant variant-sub">
+                  <div class="variant-meta">
+                    ${nightPrice ? '<span class="room-price">' + nightPrice + '</span>' : ''}
+                    <span class="time-label night">night</span>
+                    ${capacity ? '<span class="capacity-label">' + capacity + '人</span>' : ''}
+                  </div>
+                  <div class="slots">
+                    ${nightSlots.length > 0
+                      ? nightSlots.map(slot => '<span class="slot">' + formatTimeSlot(slot, true) + '</span>').join('')
+                      : '<span class="no-slots">空きなし</span>'
+                    }
+                  </div>
+                </div>`;
+            }
+
+            html += '</div>';
+            return html;
           }).join('');
         }
 

@@ -13,14 +13,13 @@
 const BASE_URL = 'https://spot-ly.jp/ja/hotels/176';
 
 // プラン情報（ページに表示される順番、予約ボタンのindex）
+// 料金は公式サイト https://www.myaku-sauna.com/ より
 const PLANS = [
   { name: '休 KYU（90分/定員3名）¥9,130〜', buttonIndex: 12, selectIndex: 0, isNight: false },
   { name: '水 MIZU（night/定員2名）¥8,800〜', buttonIndex: 15, selectIndex: 2, isNight: true },
-  { name: '水 MIZU（90分午後/定員2名）¥6,600〜', buttonIndex: 16, selectIndex: 4, isNight: false },
-  { name: '水 MIZU（90分午前/定員2名）¥6,600〜', buttonIndex: 17, selectIndex: 6, isNight: false },
+  { name: '水 MIZU（90分/定員2名）¥6,600〜', buttonIndex: 16, selectIndex: 4, isNight: false },
   { name: '火 HI（night/定員4名）¥10,120〜', buttonIndex: 20, selectIndex: 8, isNight: true },
-  { name: '火 HI（90分午後/定員4名）¥7,150〜', buttonIndex: 21, selectIndex: 10, isNight: false },
-  { name: '火 HI（90分午前/定員4名）¥7,150〜', buttonIndex: 22, selectIndex: 12, isNight: false }
+  { name: '火 HI（90分/定員4名）¥7,150〜', buttonIndex: 21, selectIndex: 10, isNight: false }
 ];
 
 // 時間帯（固定）
