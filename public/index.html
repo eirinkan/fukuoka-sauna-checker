@@ -1060,47 +1060,43 @@
               }
             }
 
-            // 通常プランの表示（BASEと同じレイアウト）
+            // GIRAFFEと同じグループ化レイアウト
             let html = `
-              <div class="room">
+              <div class="room room-grouped">
                 <div class="room-header">
                   <span class="room-name">${baseName}</span>
-                  <div class="room-meta">
+                  ${kyuStayLink}
+                </div>
+                <div class="room-variant">
+                  <div class="variant-meta">
                     ${dayPrice ? '<span class="room-price">' + dayPrice + '</span>' : ''}
                     <span class="time-label">${duration}</span>
                     ${capacity ? '<span class="capacity-label">' + capacity + '人</span>' : ''}
-                    ${kyuStayLink}
                   </div>
-                </div>
-                <div class="slots">
-                  ${daySlots.length > 0
-                    ? daySlots.map(slot => '<span class="slot">' + formatTimeSlot(slot) + '</span>').join('')
-                    : '<span class="no-slots">空きなし</span>'
-                  }
-                </div>
-              </div>`;
+                  <div class="slots">
+                    ${daySlots.length > 0
+                      ? daySlots.map(slot => '<span class="slot">' + formatTimeSlot(slot) + '</span>').join('')
+                      : '<span class="no-slots">空きなし</span>'
+                    }
+                  </div>
+                </div>`;
 
-            // ナイトパックがある場合は別の部屋として追加
-            if (nightVariants.length > 0) {
+            // ナイトパックがある場合は同じ枠内にサブバリアントとして追加
+            if (nightVariants.length > 0 && nightSlots.length > 0) {
               html += `
-              <div class="room">
-                <div class="room-header">
-                  <span class="room-name">${baseName}</span>
-                  <div class="room-meta">
+                <div class="room-variant variant-sub">
+                  <div class="variant-meta">
                     ${nightPrice ? '<span class="room-price">' + nightPrice + '</span>' : ''}
                     <span class="time-label night">night</span>
                     ${capacity ? '<span class="capacity-label">' + capacity + '人</span>' : ''}
                   </div>
-                </div>
-                <div class="slots">
-                  ${nightSlots.length > 0
-                    ? nightSlots.map(slot => '<span class="slot">' + slot + '</span>').join('')
-                    : '<span class="no-slots">空きなし</span>'
-                  }
-                </div>
-              </div>`;
+                  <div class="slots">
+                    ${nightSlots.map(slot => '<span class="slot">' + slot + '</span>').join('')}
+                  </div>
+                </div>`;
             }
 
+            html += '</div>';
             return html;
           }).join('');
         }
