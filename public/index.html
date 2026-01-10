@@ -759,6 +759,11 @@
       background: var(--text-muted);
     }
 
+    /* モバイル用トグル（デフォルト非表示） */
+    .mobile-toggle {
+      display: none;
+    }
+
     /* モバイル対応 */
     @media (max-width: 480px) {
       header {
@@ -778,15 +783,49 @@
 
       .header-right {
         width: 100%;
-        justify-content: space-between;
+        justify-content: flex-end;
+      }
+
+      /* ヘッダーのトグルを非表示 */
+      .header-right .toggle-container {
+        display: none;
+      }
+
+      /* フィルターバーのトグルを表示（2行目右端） */
+      .mobile-toggle {
+        display: flex;
+        flex-shrink: 0;
       }
 
       .filter-bar {
         padding: 10px 12px;
         gap: 8px;
-        overflow-x: auto;
-        -webkit-overflow-scrolling: touch;
-        scrollbar-width: none;
+        flex-wrap: wrap;
+      }
+
+      /* 2行目をラップ */
+      .filter-bar .time-presets {
+        display: contents;
+      }
+
+      .filter-bar::after {
+        content: '';
+        flex-basis: 100%;
+        height: 0;
+        order: 1;
+      }
+
+      .filter-bar select {
+        order: 0;
+      }
+
+      .filter-bar .preset-btn {
+        order: 2;
+      }
+
+      .filter-bar .mobile-toggle {
+        order: 2;
+        margin-left: auto;
       }
 
       .filter-bar::-webkit-scrollbar {
@@ -927,6 +966,10 @@
       <button class="preset-btn" data-start="12" data-end="18">昼</button>
       <button class="preset-btn" data-start="17" data-end="24">夜</button>
       <button class="preset-btn" data-start="23" data-end="32">深夜</button>
+    </div>
+    <div class="toggle-container mobile-toggle">
+      <span class="toggle-label">空きのみ</span>
+      <div class="toggle-switch active" id="availableOnlyToggleMobile"></div>
     </div>
   </div>
 
@@ -1581,13 +1624,19 @@
     }
 
     // トグル切り替え
-    availableOnlyToggle.addEventListener('click', () => {
+    const availableOnlyToggleMobile = document.getElementById('availableOnlyToggleMobile');
+
+    function toggleAvailableOnly() {
       showAvailableOnly = !showAvailableOnly;
       availableOnlyToggle.classList.toggle('active', showAvailableOnly);
+      availableOnlyToggleMobile.classList.toggle('active', showAvailableOnly);
       if (currentData) {
         renderFacilities(currentData);
       }
-    });
+    }
+
+    availableOnlyToggle.addEventListener('click', toggleAvailableOnly);
+    availableOnlyToggleMobile.addEventListener('click', toggleAvailableOnly);
 
     // 時間帯プリセットボタン
     const presetBtns = document.querySelectorAll('.preset-btn');
