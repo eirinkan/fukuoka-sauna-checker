@@ -617,6 +617,11 @@
       background: var(--text-muted);
     }
 
+    /* モバイル用トグル（デフォルト非表示） */
+    .mobile-toggle {
+      display: none;
+    }
+
     /* モバイル対応 */
     @media (max-width: 480px) {
       .facility-name {
@@ -626,6 +631,37 @@
       .preset-btn {
         padding: 4px 8px;
         font-size: 11px;
+      }
+
+      /* ヘッダーのトグルを非表示 */
+      .header-right .toggle-container {
+        display: none;
+      }
+
+      /* フィルターバーのトグルを表示 */
+      .mobile-toggle {
+        display: flex;
+        margin-left: auto;
+      }
+
+      .mobile-toggle .toggle-label {
+        font-size: 10px;
+      }
+
+      .mobile-toggle .toggle-switch {
+        width: 28px;
+        height: 16px;
+      }
+
+      .mobile-toggle .toggle-switch::after {
+        width: 10px;
+        height: 10px;
+        top: 2px;
+        left: 2px;
+      }
+
+      .mobile-toggle .toggle-switch.active::after {
+        left: 14px;
       }
     }
   </style>
@@ -661,6 +697,10 @@
       <button class="preset-btn" data-start="12" data-end="18">昼</button>
       <button class="preset-btn" data-start="17" data-end="24">夜</button>
       <button class="preset-btn" data-start="23" data-end="32">深夜</button>
+    </div>
+    <div class="toggle-container mobile-toggle">
+      <span class="toggle-label">空きのみ</span>
+      <div class="toggle-switch active" id="availableOnlyToggleMobile"></div>
     </div>
   </div>
 
@@ -1316,13 +1356,19 @@
     }
 
     // トグル切り替え
-    availableOnlyToggle.addEventListener('click', () => {
+    const availableOnlyToggleMobile = document.getElementById('availableOnlyToggleMobile');
+
+    function toggleAvailableOnly() {
       showAvailableOnly = !showAvailableOnly;
       availableOnlyToggle.classList.toggle('active', showAvailableOnly);
+      availableOnlyToggleMobile.classList.toggle('active', showAvailableOnly);
       if (currentData) {
         renderFacilities(currentData);
       }
-    });
+    }
+
+    availableOnlyToggle.addEventListener('click', toggleAvailableOnly);
+    availableOnlyToggleMobile.addEventListener('click', toggleAvailableOnly);
 
     // 時間帯プリセットボタン
     const presetBtns = document.querySelectorAll('.preset-btn');
