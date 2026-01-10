@@ -29,9 +29,9 @@
       --accent: #c45c26;
       --accent-glow: rgba(196, 92, 38, 0.15);
       --text-primary: #3d2914;
-      --text-secondary: #6b5344;
-      --text-muted: #9a8577;
-      --border: #e8ddd3;
+      --text-secondary: #5a4235;
+      --text-muted: #8a7567;
+      --border: #d8cdc3;
       --success: #b87333;
       --success-bg: rgba(184, 115, 51, 0.12);
     }
@@ -66,8 +66,8 @@
     }
 
     header h1 {
-      font-size: 0.85rem;
-      font-weight: 600;
+      font-size: 1.1rem;
+      font-weight: 700;
       color: var(--text-primary);
       white-space: nowrap;
     }
@@ -98,25 +98,25 @@
 
     .toggle-switch {
       position: relative;
-      width: 32px;
-      height: 18px;
+      width: 44px;
+      height: 24px;
       background: var(--bg-card);
       border: 1px solid var(--border);
-      border-radius: 9px;
+      border-radius: 12px;
       cursor: pointer;
-      transition: all 0.2s ease;
+      transition: all 0.3s ease;
     }
 
     .toggle-switch::after {
       content: '';
       position: absolute;
-      top: 2px;
-      left: 2px;
-      width: 12px;
-      height: 12px;
+      top: 3px;
+      left: 3px;
+      width: 16px;
+      height: 16px;
       background: var(--text-muted);
       border-radius: 50%;
-      transition: all 0.2s ease;
+      transition: all 0.3s ease;
     }
 
     .toggle-switch.active {
@@ -125,7 +125,7 @@
     }
 
     .toggle-switch.active::after {
-      left: 16px;
+      left: 23px;
       background: var(--success);
     }
 
@@ -140,10 +140,11 @@
     }
 
     select {
-      padding: 6px 8px;
+      padding: 12px 16px;
+      min-height: 44px;
       border: 1px solid var(--border);
-      border-radius: 6px;
-      font-size: 13px;
+      border-radius: 8px;
+      font-size: 14px;
       background: var(--bg-card);
       color: var(--text-primary);
       font-family: inherit;
@@ -152,13 +153,15 @@
       -webkit-appearance: none;
       background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23606070' d='M6 8L2 4h8z'/%3E%3C/svg%3E");
       background-repeat: no-repeat;
-      background-position: right 6px center;
-      padding-right: 22px;
+      background-position: right 12px center;
+      padding-right: 32px;
+      transition: all 0.2s ease;
     }
 
     select:focus {
       outline: none;
       border-color: var(--accent);
+      box-shadow: 0 0 0 3px var(--accent-glow);
     }
 
     .filter-bar {
@@ -186,25 +189,30 @@
     }
 
     .preset-btn {
-      padding: 4px 10px;
-      font-size: 12px;
+      padding: 10px 16px;
+      min-height: 44px;
+      font-size: 13px;
       background: var(--bg-card);
       border: 1px solid var(--border);
-      border-radius: 4px;
+      border-radius: 8px;
       color: var(--text-secondary);
       cursor: pointer;
-      transition: all 0.2s;
+      transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+      font-weight: 500;
     }
 
     .preset-btn:hover {
       border-color: var(--accent);
       color: var(--text-primary);
+      transform: translateY(-2px);
+      box-shadow: 0 4px 8px rgba(196, 92, 38, 0.15);
     }
 
     .preset-btn.active {
       background: var(--accent);
       border-color: var(--accent);
       color: white;
+      transform: scale(1.02);
     }
 
 
@@ -254,6 +262,59 @@
       to { transform: rotate(360deg); }
     }
 
+    @keyframes shimmer {
+      0% { background-position: -200% 0; }
+      100% { background-position: 200% 0; }
+    }
+
+    /* スケルトンローディング */
+    .skeleton-card {
+      background: var(--bg-card);
+      border-radius: 16px;
+      margin-bottom: 16px;
+      overflow: hidden;
+      border: 1px solid var(--border);
+    }
+
+    .skeleton-header {
+      height: 70px;
+      background: linear-gradient(90deg, var(--bg-secondary) 25%, var(--bg-card) 50%, var(--bg-secondary) 75%);
+      background-size: 200% 100%;
+      animation: shimmer 1.5s infinite;
+    }
+
+    .skeleton-content {
+      padding: 16px;
+    }
+
+    .skeleton-line {
+      height: 16px;
+      border-radius: 4px;
+      margin-bottom: 12px;
+      background: linear-gradient(90deg, var(--bg-secondary) 25%, var(--bg-card) 50%, var(--bg-secondary) 75%);
+      background-size: 200% 100%;
+      animation: shimmer 1.5s infinite;
+    }
+
+    .skeleton-line.short {
+      width: 60%;
+    }
+
+    .skeleton-slots {
+      display: flex;
+      gap: 8px;
+      margin-top: 16px;
+    }
+
+    .skeleton-slot {
+      width: 90px;
+      height: 36px;
+      border-radius: 8px;
+      background: linear-gradient(90deg, var(--bg-secondary) 25%, var(--bg-card) 50%, var(--bg-secondary) 75%);
+      background-size: 200% 100%;
+      animation: shimmer 1.5s infinite;
+    }
+
     .facilities {
       padding: 20px 15px;
       max-width: 600px;
@@ -266,12 +327,38 @@
       margin-bottom: 16px;
       overflow: hidden;
       border: 1px solid var(--border);
-      transition: all 0.2s ease;
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      opacity: 0;
+      transform: translateY(20px);
+      animation: fadeInUp 0.4s ease forwards;
+    }
+
+    .facility:nth-child(1) { animation-delay: 0ms; }
+    .facility:nth-child(2) { animation-delay: 60ms; }
+    .facility:nth-child(3) { animation-delay: 120ms; }
+    .facility:nth-child(4) { animation-delay: 180ms; }
+    .facility:nth-child(5) { animation-delay: 240ms; }
+    .facility:nth-child(6) { animation-delay: 300ms; }
+    .facility:nth-child(7) { animation-delay: 360ms; }
+    .facility:nth-child(8) { animation-delay: 420ms; }
+    .facility:nth-child(9) { animation-delay: 480ms; }
+
+    @keyframes fadeInUp {
+      from {
+        opacity: 0;
+        transform: translateY(20px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
     }
 
     .facility:hover {
       background: var(--bg-card-hover);
       border-color: rgba(255, 107, 53, 0.3);
+      transform: translateY(-4px);
+      box-shadow: 0 8px 24px rgba(61, 41, 20, 0.12);
     }
 
     .facility-header {
@@ -292,7 +379,7 @@
 
     .facility-name {
       font-weight: 700;
-      font-size: 1.15rem;
+      font-size: 1.25rem;
       letter-spacing: 0.02em;
     }
 
@@ -310,20 +397,23 @@
       background: var(--bg-secondary);
       border: 1px solid var(--border);
       color: var(--text-muted);
-      width: 32px;
-      height: 32px;
-      font-size: 1rem;
-      border-radius: 6px;
+      width: 44px;
+      height: 44px;
+      min-width: 44px;
+      min-height: 44px;
+      font-size: 1.1rem;
+      border-radius: 8px;
       text-decoration: none;
       display: flex;
       align-items: center;
       justify-content: center;
-      transition: all 0.2s;
+      transition: all 0.2s ease;
     }
 
     .map-icon-btn:hover {
       background: var(--bg-card-hover);
       color: var(--text-secondary);
+      transform: scale(1.05);
     }
 
     .stay-link {
@@ -348,16 +438,22 @@
       background: var(--accent);
       border: none;
       color: white;
-      padding: 4px 12px;
-      font-size: 0.75rem;
-      border-radius: 6px;
+      padding: 10px 16px;
+      min-height: 44px;
+      font-size: 0.85rem;
+      border-radius: 8px;
       text-decoration: none;
       font-weight: 600;
-      transition: all 0.2s;
+      transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
     }
 
     .reserve-btn:hover {
       opacity: 0.9;
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(196, 92, 38, 0.3);
     }
 
     .facility-content {
@@ -367,9 +463,12 @@
     .room {
       margin-bottom: 16px;
       padding: 14px;
+      padding-left: 18px;
       background: var(--bg-secondary);
-      border-radius: 10px;
+      border-radius: 12px;
       border: 1px solid var(--border);
+      border-left: 4px solid var(--accent);
+      position: relative;
     }
 
     .room:last-child {
@@ -385,7 +484,7 @@
     }
 
     .room-name {
-      font-size: 0.95rem;
+      font-size: 1.05rem;
       color: var(--text-primary);
       font-weight: 600;
       margin-right: auto;
@@ -505,11 +604,17 @@
     .slot {
       background: var(--success-bg);
       color: var(--success);
-      padding: 6px 14px;
+      padding: 8px 16px;
       border-radius: 8px;
-      font-size: 0.85rem;
+      font-size: 0.9rem;
       font-weight: 600;
-      border: 1px solid rgba(0, 212, 170, 0.2);
+      border: 1px solid rgba(184, 115, 51, 0.25);
+      transition: all 0.2s ease;
+    }
+
+    .slot:hover {
+      transform: scale(1.05);
+      box-shadow: 0 4px 12px rgba(184, 115, 51, 0.2);
     }
 
     .no-slots {
@@ -593,6 +698,48 @@
       border: 1px solid rgba(255, 100, 100, 0.2);
     }
 
+    /* スケルトンローディング */
+    @keyframes shimmer {
+      0% { background-position: -200% 0; }
+      100% { background-position: 200% 0; }
+    }
+
+    .skeleton-card {
+      pointer-events: none;
+    }
+
+    .skeleton-header {
+      height: 24px;
+      width: 60%;
+      border-radius: 6px;
+      background: linear-gradient(90deg, var(--bg-secondary) 25%, var(--bg-card) 50%, var(--bg-secondary) 75%);
+      background-size: 200% 100%;
+      animation: shimmer 1.5s infinite;
+    }
+
+    .skeleton-line {
+      height: 16px;
+      width: 80%;
+      border-radius: 4px;
+      margin-bottom: 8px;
+      background: linear-gradient(90deg, var(--bg-secondary) 25%, var(--bg-card) 50%, var(--bg-secondary) 75%);
+      background-size: 200% 100%;
+      animation: shimmer 1.5s infinite;
+    }
+
+    .skeleton-line.short {
+      width: 50%;
+    }
+
+    .skeleton-slot {
+      height: 36px;
+      width: 100px;
+      border-radius: 8px;
+      background: linear-gradient(90deg, var(--bg-secondary) 25%, var(--bg-card) 50%, var(--bg-secondary) 75%);
+      background-size: 200% 100%;
+      animation: shimmer 1.5s infinite;
+    }
+
     /* 日付入力のカスタマイズ（WebKit系ブラウザ用） */
     input[type="date"]::-webkit-calendar-picker-indicator {
       filter: invert(1);
@@ -619,14 +766,140 @@
 
     /* モバイル対応 */
     @media (max-width: 480px) {
-      .facility-name {
+      header {
+        flex-wrap: wrap;
+        padding: 12px;
+        gap: 10px;
+      }
+
+      .header-left {
+        width: 100%;
+        margin-bottom: 4px;
+      }
+
+      header h1 {
         font-size: 1rem;
       }
 
-      .preset-btn {
-        padding: 4px 8px;
-        font-size: 11px;
+      .header-right {
+        width: 100%;
+        justify-content: space-between;
       }
+
+      .filter-bar {
+        padding: 10px 12px;
+        gap: 8px;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        scrollbar-width: none;
+      }
+
+      .filter-bar::-webkit-scrollbar {
+        display: none;
+      }
+
+      .time-presets {
+        flex-wrap: nowrap;
+        gap: 6px;
+      }
+
+      .preset-btn {
+        padding: 8px 12px;
+        min-height: 40px;
+        font-size: 12px;
+        flex-shrink: 0;
+      }
+
+      select {
+        padding: 10px 12px;
+        min-height: 40px;
+        font-size: 13px;
+      }
+
+      .facilities {
+        padding: 16px 12px;
+      }
+
+      .facility-name {
+        font-size: 1.1rem;
+      }
+
+      .facility-header {
+        padding: 14px;
+      }
+
+      .facility-content {
+        padding: 12px 14px;
+      }
+
+      .room {
+        padding: 12px;
+        padding-left: 16px;
+      }
+
+      .room-name {
+        font-size: 0.95rem;
+      }
+
+      .slots {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
+        gap: 8px;
+      }
+
+      .slot {
+        text-align: center;
+        padding: 10px 12px;
+        font-size: 0.85rem;
+      }
+
+      .map-icon-btn, .reserve-btn {
+        min-height: 40px;
+        padding: 8px 12px;
+      }
+    }
+
+    /* タブレット対応 */
+    @media (min-width: 481px) and (max-width: 768px) {
+      .facilities {
+        max-width: 100%;
+        padding: 16px;
+      }
+
+      .slots {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+        gap: 8px;
+      }
+    }
+
+    /* スワイプインジケーター */
+    .swipe-indicator {
+      position: fixed;
+      top: 50%;
+      transform: translateY(-50%);
+      background: var(--accent);
+      color: white;
+      padding: 12px 20px;
+      border-radius: 8px;
+      font-size: 0.9rem;
+      font-weight: 600;
+      opacity: 0;
+      transition: opacity 0.3s ease;
+      z-index: 1000;
+      pointer-events: none;
+    }
+
+    .swipe-indicator.prev {
+      left: 20px;
+    }
+
+    .swipe-indicator.next {
+      right: 20px;
+    }
+
+    .swipe-indicator.show {
+      opacity: 1;
     }
   </style>
 </head>
@@ -663,6 +936,10 @@
       <button class="preset-btn" data-start="23" data-end="32">深夜</button>
     </div>
   </div>
+
+  <!-- スワイプインジケーター -->
+  <div class="swipe-indicator prev">← 前日</div>
+  <div class="swipe-indicator next">翌日 →</div>
 
   <main class="facilities" id="facilities">
     <div class="loading">
@@ -1188,12 +1465,7 @@
 
     // 空き状況を取得
     async function fetchAvailability(date) {
-      facilitiesContainer.innerHTML = `
-        <div class="loading">
-          <div class="spinner"></div>
-          <p>読み込み中...</p>
-        </div>
-      `;
+      showSkeletonLoading();
 
       try {
         const res = await fetch(`/api/availability?date=${date}`);
@@ -1369,8 +1641,77 @@
       }
     });
 
+    // スワイプで日付切り替え（モバイル用）
+    let touchStartX = 0;
+    let touchEndX = 0;
+    const swipeThreshold = 80; // スワイプ判定の閾値（px）
+
+    facilitiesContainer.addEventListener('touchstart', (e) => {
+      touchStartX = e.changedTouches[0].screenX;
+    }, { passive: true });
+
+    facilitiesContainer.addEventListener('touchend', (e) => {
+      touchEndX = e.changedTouches[0].screenX;
+      handleSwipe();
+    }, { passive: true });
+
+    function handleSwipe() {
+      const diff = touchStartX - touchEndX;
+
+      if (Math.abs(diff) < swipeThreshold) return;
+
+      const currentIndex = dateSelect.selectedIndex;
+
+      if (diff > 0) {
+        // 左スワイプ → 次の日
+        if (currentIndex < dateSelect.options.length - 1) {
+          dateSelect.selectedIndex = currentIndex + 1;
+          showSwipeIndicator('next');
+          fetchAvailability(dateSelect.value);
+        }
+      } else {
+        // 右スワイプ → 前の日
+        if (currentIndex > 0) {
+          dateSelect.selectedIndex = currentIndex - 1;
+          showSwipeIndicator('prev');
+          fetchAvailability(dateSelect.value);
+        }
+      }
+    }
+
+    function showSwipeIndicator(direction) {
+      const indicator = document.querySelector(`.swipe-indicator.${direction}`);
+      if (indicator) {
+        indicator.classList.add('show');
+        setTimeout(() => indicator.classList.remove('show'), 500);
+      }
+    }
+
+    // スケルトンローディングを表示
+    function showSkeletonLoading() {
+      const skeletonCount = 4;
+      const skeletons = Array(skeletonCount).fill('').map(() => `
+        <div class="facility skeleton-card">
+          <div class="facility-header">
+            <div class="skeleton-header"></div>
+          </div>
+          <div class="facility-content">
+            <div class="skeleton-line"></div>
+            <div class="skeleton-line short"></div>
+            <div class="slots" style="margin-top: 12px;">
+              <div class="skeleton-slot"></div>
+              <div class="skeleton-slot"></div>
+              <div class="skeleton-slot"></div>
+            </div>
+          </div>
+        </div>
+      `).join('');
+      facilitiesContainer.innerHTML = skeletons;
+    }
+
     // 初期読み込み（料金データを先に取得）
     (async function init() {
+      showSkeletonLoading();
       await fetchPricing();
       fetchAvailability(today);
     })();
