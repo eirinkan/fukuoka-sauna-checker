@@ -7,8 +7,13 @@
  * - 水 MIZU: ナイトパック、90分プラン（午後）、90分プラン（午前）
  * - 火 HI: ナイトパック、90分プラン（午後）、90分プラン（午前）
  *
- * メインページの空室カレンダー（○/×）から日単位の空き状況を取得
- * ※詳細な時間帯ごとの空き状況はログイン必要のため取得不可
+ * 詳細な時間帯取得方法（TODO: 実装中）:
+ * 1. URLに日付パラメータを付与してアクセス
+ * 2. 人数ドロップダウンで「1名」を選択
+ * 3. 「予約する」ボタンをクリック
+ * 4. 時間帯ボタンのdisabled属性で空き/埋まりを判定
+ *
+ * 現在は日単位の空き状況（○/×）のみ取得
  */
 
 const BASE_URL = 'https://spot-ly.jp/ja/hotels/176';
@@ -145,6 +150,8 @@ async function scrape(browser) {
     for (const plan of PLANS) {
       const availability = planAvailability[plan.planTitle];
       if (!availability || !availability.availableDates) continue;
+
+      console.log(`    → ${plan.planTitle}: ${availability.availableDates.length}日`);
 
       for (const dateInfo of availability.availableDates) {
         let year = currentYear;
