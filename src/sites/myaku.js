@@ -111,6 +111,28 @@ async function scrape(browser) {
     });
     console.log('    → ページ上のプラン順序:', JSON.stringify(pageOrder.slice(0, 10)));
 
+    // プラン情報が見つからない場合はエラー
+    if (pageOrder.length === 0) {
+      console.log('    → 脈: プラン情報が見つかりません（セレクタ: button.w-[144px]）');
+      // ページのHTMLをデバッグ出力（ボタン要素のクラス名を確認）
+      const buttonInfo = await page.evaluate(() => {
+        const allButtons = document.querySelectorAll('button');
+        const buttonClasses = [];
+        allButtons.forEach((btn, idx) => {
+          if (idx < 10) {
+            buttonClasses.push({
+              idx,
+              classes: btn.className.substring(0, 100),
+              text: btn.innerText.substring(0, 30).replace(/\n/g, ' ')
+            });
+          }
+        });
+        return buttonClasses;
+      });
+      console.log('    → 脈: ボタン要素の情報:', JSON.stringify(buttonInfo.slice(0, 5)));
+      return result;
+    }
+
     // 各プランを処理
     for (const plan of PLANS) {
       console.log(`    → ${plan.planTitle}: スクレイピング中...`);
