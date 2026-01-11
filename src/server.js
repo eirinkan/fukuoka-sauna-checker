@@ -49,7 +49,8 @@ app.get('/api/debug/puppeteer', async (req, res) => {
     results.environment = {
       K_SERVICE: process.env.K_SERVICE || 'not set',
       NODE_ENV: process.env.NODE_ENV || 'not set',
-      PUPPETEER_EXECUTABLE_PATH: process.env.PUPPETEER_EXECUTABLE_PATH || 'not set'
+      PUPPETEER_EXECUTABLE_PATH: process.env.PUPPETEER_EXECUTABLE_PATH || 'not set',
+      FLARESOLVERR_URL: process.env.FLARESOLVERR_URL || 'not set'
     };
 
     results.steps.push({ step: 'launching', time: Date.now() - startTime });
