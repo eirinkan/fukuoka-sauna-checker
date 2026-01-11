@@ -92,6 +92,16 @@ async function scrape(browser) {
     await page.goto(URL, { waitUntil: 'networkidle2', timeout: 90000 });
     await new Promise(resolve => setTimeout(resolve, 5000));
 
+    // デバッグ: ページタイトルとURL確認
+    const pageTitle = await page.title();
+    console.log(`    サウナヨーガン: ページタイトル = "${pageTitle}"`);
+
+    // Cloudflareチャレンジページかどうかチェック
+    if (pageTitle.includes('Just a moment') || pageTitle.includes('Cloudflare')) {
+      console.log('    サウナヨーガン: Cloudflareチャレンジページ検出 - スキップ');
+      return { dates: {} };
+    }
+
     // ローカル日付をYYYY-MM-DD形式で取得
     function formatLocalDate(date) {
       const year = date.getFullYear();
@@ -118,10 +128,7 @@ async function scrape(browser) {
       const targetDate = new Date(today);
       targetDate.setDate(today.getDate() + i);
       const dateStr = formatLocalDate(targetDate);
-      const year = targetDate.getFullYear();
-      const month = String(targetDate.getMonth() + 1).padStart(2, '0');
-      const day = String(targetDate.getDate()).padStart(2, '0');
-      const dateId = `${year}-${month}-${day}`;
+      const dateId = formatLocalDate(targetDate); // YYYY-MM-DD形式
 
       // 2日目以降は再度ページにアクセス（goBackが効かないため）
       if (i > 0) {
@@ -129,99 +136,52 @@ async function scrape(browser) {
         await new Promise(resolve => setTimeout(resolve, 3000));
       }
 
-      // 日付をクリック（label[for="2026-01-07"] 形式）
-      const clicked = await page.evaluate((dateId, dayNum) => {
-        // 1. label[for="yyyy-mm-dd"] で直接探す
-        const label = document.querySelector(`label[for="${dateId}"]`);
-        if (label) {
-          label.click();
-          return 'label';
-        }
-
-        // 2. カレンダーセル内の日付テキストを探す
-        const cells = document.querySelectorAll('td, div.day, .calendar-day');
-        for (const cell of cells) {
-          if (cell.textContent?.trim() === String(dayNum)) {
-            cell.click();
-            return 'cell';
+      // 日付が利用可能か確認してクリック
+      // input[id="2026-01-11"][data-targetdate]:not(.is-unavailable)
+      const clicked = await page.evaluate((dateId) => {
+        // カレンダーのinput要素を探す
+        const input = document.querySelector(`input#${CSS.escape(dateId)}:not(.is-unavailable)`);
+        if (input && input.dataset.targetdate) {
+          // 対応するlabelをクリック
+          const label = document.querySelector(`label[for="${dateId}"]`);
+          if (label) {
+            label.click();
+            return 'label';
           }
+          // labelがなければinputをクリック
+          input.click();
+          return 'input';
         }
-
-        // 3. リンクで日付を含むものを探す
-        const links = document.querySelectorAll('a');
-        for (const link of links) {
-          if (link.textContent?.trim() === String(dayNum)) {
-            link.click();
-            return 'link';
-          }
-        }
-
         return null;
-      }, dateId, targetDate.getDate());
+      }, dateId);
+
+      console.log(`    サウナヨーガン: ${dateStr} クリック結果 = ${clicked}`);
 
       if (clicked) {
         // 時間枠のロードを待つ
-        await new Promise(resolve => setTimeout(resolve, 3000));
+        await new Promise(resolve => setTimeout(resolve, 2000));
 
-        // 時間枠を取得
+        // 時間枠を取得: input.timebox[data-vacancy="1"] の data-time
         const timeSlots = await page.evaluate(() => {
           const slots = [];
 
-          // 方法1: 時間枠カードを探す（○マークがあるもの = 空きあり）
-          // スクリーンショットから: ①10:00~12:30 ¥9,900 ○ 形式
-          const allElements = document.querySelectorAll('label, div, button, span');
-          allElements.forEach(el => {
-            const text = el.textContent?.trim();
-            // 時間範囲を含み、○マークがある要素を探す
-            const timeMatch = text?.match(/(\d{1,2}:\d{2})[~〜～](\d{1,2}:\d{2})/);
-            if (timeMatch && text.includes('○')) {
-              const time = `${timeMatch[1]}〜${timeMatch[2]}`;
-              if (!slots.includes(time)) {
-                slots.push(time);
+          // input.timebox[data-vacancy="1"] から取得
+          const timeboxInputs = document.querySelectorAll('input.timebox[data-vacancy="1"]');
+          timeboxInputs.forEach(input => {
+            const time = input.dataset.time; // "10:00～12:30" 形式
+            if (time) {
+              // ～ を 〜 に統一
+              const normalizedTime = time.replace(/[～~]/g, '〜');
+              if (!slots.includes(normalizedTime)) {
+                slots.push(normalizedTime);
               }
             }
           });
 
-          // 方法2: RESERVA形式 input.timebox[data-vacancy="1"]
-          if (slots.length === 0) {
-            const timeboxInputs = document.querySelectorAll('input.timebox, input[type="radio"]');
-            timeboxInputs.forEach(input => {
-              const time = input.dataset.time || input.value;
-              const vacancy = input.dataset.vacancy;
-              const parent = input.closest('label, div');
-              const parentText = parent?.textContent || '';
-
-              // vacancy="1" または ○マークがあれば空きあり
-              if (time && (vacancy === '1' || parentText.includes('○'))) {
-                const timeMatch = time.match(/(\d{1,2}:\d{2})[~〜～](\d{1,2}:\d{2})/);
-                if (timeMatch) {
-                  const formattedTime = `${timeMatch[1]}〜${timeMatch[2]}`;
-                  if (!slots.includes(formattedTime)) {
-                    slots.push(formattedTime);
-                  }
-                }
-              }
-            });
-          }
-
-          // 方法3: label要素で○を含むものを探す
-          if (slots.length === 0) {
-            const labels = document.querySelectorAll('label');
-            labels.forEach(label => {
-              const text = label.textContent?.trim();
-              const timeMatch = text?.match(/(\d{1,2}:\d{2})[~〜～](\d{1,2}:\d{2})/);
-              // ○があり、×がない
-              if (timeMatch && text.includes('○') && !text.includes('×')) {
-                const time = `${timeMatch[1]}〜${timeMatch[2]}`;
-                if (!slots.includes(time)) {
-                  slots.push(time);
-                }
-              }
-            });
-          }
-
           return slots;
         });
+
+        console.log(`    サウナヨーガン: ${dateStr} 空き枠 = ${timeSlots.length}個 [${timeSlots.join(', ')}]`);
 
         if (timeSlots.length > 0) {
           result.dates[dateStr][ROOM_NAME] = timeSlots.sort((a, b) => {

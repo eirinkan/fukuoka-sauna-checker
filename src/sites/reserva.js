@@ -215,6 +215,15 @@ async function scrapeRoomWithCookies(browser, room, facilityName, cfData) {
     // JavaScript実行完了を待機（追加の待機時間）
     await new Promise(resolve => setTimeout(resolve, 5000));
 
+    // Cloudflareチャレンジページの検出
+    const pageTitle = await page.title();
+    console.log(`    ${facilityName}: ページタイトル = "${pageTitle}"`);
+    // 「Just a moment」「しばらくお待ちください」はCloudflareチャレンジ
+    if (pageTitle.includes('Just a moment') || pageTitle.includes('しばらくお待ちください') || pageTitle === '') {
+      console.log(`    ${facilityName}: Cloudflareチャレンジページ検出 - スキップ`);
+      return {};
+    }
+
     // カレンダー展開を待機（timebox要素が出現するまで、長めのタイムアウト）
     let timeboxFound = false;
     try {
