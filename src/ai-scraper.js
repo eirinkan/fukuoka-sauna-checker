@@ -82,6 +82,7 @@ async function analyzeScreenshot(screenshotBuffer, siteName, targetDate) {
 
     const response = await result.response;
     const text = response.text();
+    console.log(`    Gemini応答 (${siteName}):`, text.substring(0, 200));
 
     // JSONを抽出
     const jsonMatch = text.match(/\{[\s\S]*\}/);

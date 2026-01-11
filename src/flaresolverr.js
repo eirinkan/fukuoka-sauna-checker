@@ -55,8 +55,8 @@ async function getPageHtml(url, maxTimeout = TIMEOUT) {
  * @returns {Promise<boolean>}
  */
 async function isAvailable() {
-  // Cloud Run環境ではFlareSolverrは利用不可（即座にfalseを返す）
-  if (process.env.K_SERVICE) {
+  // FLARESOLVERR_URLが設定されていない場合はスキップ
+  if (!process.env.FLARESOLVERR_URL) {
     return false;
   }
 

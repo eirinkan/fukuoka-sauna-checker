@@ -212,8 +212,8 @@ async function scrapeRoomWithCookies(browser, room, facilityName, cfData) {
     // ページ読み込み（networkidle0でより確実に待機）
     await page.goto(room.url, { waitUntil: 'networkidle0', timeout: 90000 });
 
-    // JavaScript実行完了を待機（追加の待機時間）
-    await new Promise(resolve => setTimeout(resolve, 5000));
+    // JavaScript実行完了を待機（Cloudflare突破後、追加の待機時間）
+    await new Promise(resolve => setTimeout(resolve, 10000));
 
     // Cloudflareチャレンジページの検出
     const pageTitle = await page.title();
@@ -269,6 +269,7 @@ async function scrapeRoomWithCookies(browser, room, facilityName, cfData) {
       const targetDate = new Date().toISOString().split('T')[0];
 
       const aiResult = await analyzeScreenshot(screenshot, `${facilityName} ${room.name}`, targetDate);
+      console.log(`    AI解析結果:`, JSON.stringify(aiResult));
       if (aiResult && aiResult.rooms) {
         for (const roomData of aiResult.rooms) {
           if (roomData.availableSlots && roomData.availableSlots.length > 0) {
