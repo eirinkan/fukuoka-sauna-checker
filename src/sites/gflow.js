@@ -65,7 +65,7 @@ async function scrape(browser) {
       // input[type="radio"]を直接クリックする（label経由ではなく）
       let clicked = false;
 
-      // 方法1: input要素を直接クリック
+      // 方法1: input要素を直接操作（Vue.jsリアクティビティ対応）
       const radioHandles = await page.$$('input[type="radio"]');
       for (const radio of radioHandles) {
         const parentText = await page.evaluate(el => {
@@ -78,17 +78,25 @@ async function scrape(browser) {
           await page.evaluate(el => el.scrollIntoView({ block: 'center' }), radio);
           await new Promise(resolve => setTimeout(resolve, 500));
 
-          // クリック（複数の方法を試す）
-          try {
-            await radio.click();
-            clicked = true;
-            console.log(`    → OOO ${room.keyword}: radioクリック成功`);
-          } catch (e) {
-            // フォールバック: JavaScript経由でクリック
-            await page.evaluate(el => el.click(), radio);
-            clicked = true;
-            console.log(`    → OOO ${room.keyword}: radio JSクリック成功`);
-          }
+          // Vue.js対応: checked状態を変更し、各種イベントをディスパッチ
+          await page.evaluate(el => {
+            // チェック状態を設定
+            el.checked = true;
+
+            // 複数のイベントをディスパッチしてVue.jsのリアクティビティをトリガー
+            el.dispatchEvent(new Event('input', { bubbles: true }));
+            el.dispatchEvent(new Event('change', { bubbles: true }));
+            el.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+
+            // 親labelも念のためクリック
+            const label = el.closest('label');
+            if (label) {
+              label.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+            }
+          }, radio);
+
+          clicked = true;
+          console.log(`    → OOO ${room.keyword}: radio+イベント発火成功`);
           break;
         }
       }
