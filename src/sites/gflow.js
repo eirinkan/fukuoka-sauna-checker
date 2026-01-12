@@ -28,8 +28,23 @@ async function scrape(browser) {
     try {
       await page.waitForSelector('table.gold-table', { timeout: 30000 });
     } catch (e) {
-      console.log('    → OOO: gold-table待機タイムアウト、続行...');
+      console.log('    → OOO: gold-table待機タイムアウト、スクロール試行...');
+      // テーブルが見つからない場合、スクロールして再試行
+      await page.evaluate(() => {
+        window.scrollTo(0, document.body.scrollHeight);
+      });
+      await new Promise(resolve => setTimeout(resolve, 3000));
     }
+
+    // 予約枠セクションまでスクロール（Cloud Run環境対応）
+    await page.evaluate(() => {
+      const section = document.querySelector('table.gold-table') ||
+                      document.querySelector('[class*="calendar"]') ||
+                      document.querySelector('h2, h3');
+      if (section) {
+        section.scrollIntoView({ behavior: 'instant', block: 'center' });
+      }
+    });
 
     // 追加の待機時間（JavaScript実行完了まで）
     await new Promise(resolve => setTimeout(resolve, 5000));
@@ -76,6 +91,15 @@ async function scrape(browser) {
       // gold-tableからデータを取得
       // 空き: td.cursor + ri-checkbox-blank-circle-line
       // 埋まり: td.bg-gray + ri-close-line
+
+      // デバッグ: テーブル数を確認
+      const tableCount = await page.evaluate(() => document.querySelectorAll('table.gold-table').length);
+      if (tableCount < 2) {
+        console.log(`    → OOO ${room.keyword}: gold-table不足（${tableCount}個）、ページタイトル確認中...`);
+        const title = await page.title();
+        console.log(`    → OOO ${room.keyword}: ページタイトル = "${title}"`);
+      }
+
       const tableData = await page.evaluate(() => {
         const data = {};
         const year = new Date().getFullYear();
