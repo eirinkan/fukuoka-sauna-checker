@@ -3,17 +3,12 @@ const path = require('path');
 
 // Cloud Run環境かどうか
 const isCloudRun = !!process.env.K_SERVICE;
-let puppeteer;
 
-if (isCloudRun) {
-  console.log('Cloud Run環境を検出 - 標準puppeteerを使用');
-  puppeteer = require('puppeteer');
-} else {
-  console.log('ローカル環境 - puppeteer-extraを使用');
-  puppeteer = require('puppeteer-extra');
-  const StealthPlugin = require('puppeteer-extra-plugin-stealth');
-  puppeteer.use(StealthPlugin());
-}
+// 全環境でpuppeteer-extraを使用（Vue.jsサイト対応）
+console.log(isCloudRun ? 'Cloud Run環境 - puppeteer-extraを使用' : 'ローカル環境 - puppeteer-extraを使用');
+const puppeteer = require('puppeteer-extra');
+const StealthPlugin = require('puppeteer-extra-plugin-stealth');
+puppeteer.use(StealthPlugin());
 
 // 各サイトのスクレイパー
 const sakurado = require('./sites/sakurado');
