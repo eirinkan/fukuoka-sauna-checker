@@ -57,15 +57,20 @@ async function getPageHtml(url, maxTimeout = TIMEOUT) {
 async function isAvailable() {
   // FLARESOLVERR_URLが設定されていない場合はスキップ
   if (!process.env.FLARESOLVERR_URL) {
+    console.log('  FlareSolverr: FLARESOLVERR_URL未設定');
     return false;
   }
 
   try {
-    const response = await axios.get(FLARESOLVERR_URL.replace('/v1', '/health'), {
-      timeout: 5000
+    const healthUrl = FLARESOLVERR_URL.replace('/v1', '/health');
+    console.log(`  FlareSolverr: ヘルスチェック中... ${healthUrl}`);
+    const response = await axios.get(healthUrl, {
+      timeout: 15000  // Cloud Run間通信用にタイムアウト延長
     });
+    console.log(`  FlareSolverr: ヘルスチェック成功 (status=${response.status})`);
     return response.status === 200;
   } catch (error) {
+    console.log(`  FlareSolverr: ヘルスチェック失敗 - ${error.message}`);
     return false;
   }
 }
