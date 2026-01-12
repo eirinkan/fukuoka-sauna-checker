@@ -7,17 +7,19 @@
  * 空き=価格表示、空きなし=×
  *
  * 注意: 各部屋で時間枠が異なる
- * - サンカク/マル: 100分/120分 (08:00~09:40, 10:10~11:50...)
+ * - サンカク: 100分/120分 (08:00~09:40, 10:10~11:50...)
+ * - マル: 100分/120分 (08:30~10:10, 10:40~12:20...)
  * - シカク: 120分のみ (08:40~10:40, 11:10~13:10...)
  */
 
 const URL = 'https://sw.gflow.cloud/ooo-fukuoka/calendar_open';
 
 // 統一フォーマット：部屋名（時間/定員）価格
+// 期待される最初の時間枠も定義（テーブル更新の確認用）
 const ROOMS = [
-  { name: 'サンカク（100分/120分/定員2名）¥4,500-8,500', keyword: 'サンカク', altKeyword: 'Triangle' },
-  { name: 'マル（100分/120分/定員3名）¥5,000-11,500', keyword: 'マル', altKeyword: 'PRIME' },
-  { name: 'シカク（120分/定員4名）¥7,000-18,000', keyword: 'シカク', altKeyword: 'VIP' }
+  { name: 'サンカク（100分/120分/定員2名）¥4,500-8,500', keyword: 'サンカク', altKeyword: 'Triangle', expectedFirstTime: '08:00' },
+  { name: 'マル（100分/120分/定員3名）¥5,000-11,500', keyword: 'マル', altKeyword: 'PRIME', expectedFirstTime: '08:30' },
+  { name: 'シカク（120分/定員4名）¥7,000-18,000', keyword: 'シカク', altKeyword: 'VIP', expectedFirstTime: '08:40' }
 ];
 
 async function scrape(browser) {
@@ -59,7 +61,7 @@ async function scrape(browser) {
       const room = ROOMS[roomIndex];
       console.log(`    → OOO: ${room.keyword}をスクレイピング中...`);
 
-      // 部屋カードをクリック（最初の部屋も含めてクリックして確実に選択）
+      // 部屋カードをクリック
       const clickResult = await page.evaluate((keyword, altKeyword) => {
         // label.box-room 内から対象の部屋を探す
         const labels = document.querySelectorAll('label.box-room');
@@ -89,11 +91,35 @@ async function scrape(browser) {
       console.log(`    → OOO ${room.keyword}: クリック結果=${JSON.stringify(clickResult)}`);
 
       if (clickResult.clicked) {
-        // テーブルが更新されるまで待機（長めに設定）
-        await new Promise(resolve => setTimeout(resolve, 5000));
+        // テーブルが期待する時間枠に更新されるまで待機（最大15秒）
+        const expectedTime = room.expectedFirstTime;
+        try {
+          await page.waitForFunction(
+            (expected) => {
+              const tables = document.querySelectorAll('table.gold-table');
+              if (tables.length < 2) return false;
+              const bodyTable = tables[1];
+              const firstRow = bodyTable.querySelector('tr');
+              if (!firstRow) return false;
+              const firstCell = firstRow.querySelector('td');
+              if (!firstCell) return false;
+              const text = firstCell.textContent || '';
+              return text.includes(expected);
+            },
+            { timeout: 15000 },
+            expectedTime
+          );
+          console.log(`    → OOO ${room.keyword}: テーブル更新確認 (${expectedTime})`);
+        } catch (e) {
+          console.log(`    → OOO ${room.keyword}: テーブル更新タイムアウト、追加待機...`);
+          await new Promise(resolve => setTimeout(resolve, 5000));
+        }
 
-        // テーブルが更新されたことを確認するため、最初の時間枠を取得して比較
-        const firstTimeSlot = await page.evaluate(() => {
+        // 追加の安定化待機
+        await new Promise(resolve => setTimeout(resolve, 1000));
+
+        // 更新後の時間枠を確認
+        const afterTimeSlot = await page.evaluate(() => {
           const tables = document.querySelectorAll('table.gold-table');
           if (tables.length < 2) return null;
           const bodyTable = tables[1];
@@ -105,7 +131,7 @@ async function scrape(browser) {
           const match = text.match(/(\d{2}:\d{2})~\s*(\d{2}:\d{2})/);
           return match ? match[0] : text.substring(0, 20);
         });
-        console.log(`    → OOO ${room.keyword}: 最初の時間枠="${firstTimeSlot}"`);
+        console.log(`    → OOO ${room.keyword}: 最初の時間枠="${afterTimeSlot}" (期待: ${expectedTime})`);
       }
 
       // gold-tableからデータを取得
