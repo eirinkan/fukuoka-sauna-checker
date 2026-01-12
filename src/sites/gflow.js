@@ -22,8 +22,17 @@ async function scrape(browser) {
   await page.setViewport({ width: 1280, height: 800 });
 
   try {
-    await page.goto(URL, { waitUntil: 'networkidle2', timeout: 60000 });
-    await new Promise(resolve => setTimeout(resolve, 4000));
+    await page.goto(URL, { waitUntil: 'networkidle2', timeout: 90000 });
+
+    // テーブル要素の出現を待つ（Cloud Run環境対応）
+    try {
+      await page.waitForSelector('table.gold-table', { timeout: 30000 });
+    } catch (e) {
+      console.log('    → OOO: gold-table待機タイムアウト、続行...');
+    }
+
+    // 追加の待機時間（JavaScript実行完了まで）
+    await new Promise(resolve => setTimeout(resolve, 5000));
 
     const result = { dates: {} };
 
@@ -59,7 +68,8 @@ async function scrape(browser) {
         }, room.selector, room.keyword);
 
         if (clicked) {
-          await new Promise(resolve => setTimeout(resolve, 2500));
+          // テーブルが更新されるまで待機（Cloud Run環境対応）
+          await new Promise(resolve => setTimeout(resolve, 4000));
         }
       }
 

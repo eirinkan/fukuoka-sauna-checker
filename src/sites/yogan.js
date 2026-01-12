@@ -93,14 +93,34 @@ async function scrape(browser) {
     await new Promise(resolve => setTimeout(resolve, 5000));
 
     // デバッグ: ページタイトルとURL確認
-    const pageTitle = await page.title();
+    let pageTitle = await page.title();
     console.log(`    サウナヨーガン: ページタイトル = "${pageTitle}"`);
 
     // Cloudflareチャレンジページかどうかチェック
-    if (pageTitle.includes('Just a moment') || pageTitle.includes('Cloudflare')) {
-      console.log('    サウナヨーガン: Cloudflareチャレンジページ検出 - スキップ');
-      return { dates: {} };
+    if (pageTitle.includes('Just a moment') || pageTitle.includes('Cloudflare') || pageTitle.includes('しばらくお待ちください')) {
+      // 少し待ってもう一度確認（自動でチャレンジを通過できる場合がある）
+      await new Promise(resolve => setTimeout(resolve, 10000));
+      pageTitle = await page.title();
+      console.log(`    サウナヨーガン: 再確認後のページタイトル = "${pageTitle}"`);
+
+      if (pageTitle.includes('Just a moment') || pageTitle.includes('Cloudflare') || pageTitle.includes('しばらくお待ちください')) {
+        console.log('    サウナヨーガン: Cloudflareチャレンジページ検出 - スキップ');
+        return { dates: {} };
+      }
     }
+
+    // 日程選択セクションまでスクロール
+    await page.evaluate(() => {
+      const dateSection = document.querySelector('#userselect-datetime') ||
+                          document.querySelector('[class*="datetime"]') ||
+                          document.querySelector('.cal-date-list');
+      if (dateSection) {
+        dateSection.scrollIntoView({ behavior: 'instant', block: 'start' });
+      } else {
+        window.scrollTo(0, document.body.scrollHeight / 2);
+      }
+    });
+    await new Promise(resolve => setTimeout(resolve, 2000));
 
     // ローカル日付をYYYY-MM-DD形式で取得
     function formatLocalDate(date) {

@@ -212,8 +212,8 @@ async function scrapeRoomWithCookies(browser, room, facilityName, cfData) {
     // ページ読み込み（networkidle0でより確実に待機）
     await page.goto(room.url, { waitUntil: 'networkidle0', timeout: 90000 });
 
-    // JavaScript実行完了を待機（Cloudflare突破後、追加の待機時間）
-    await new Promise(resolve => setTimeout(resolve, 10000));
+    // JavaScript実行完了を待機
+    await new Promise(resolve => setTimeout(resolve, 5000));
 
     // Cloudflareチャレンジページの検出
     const pageTitle = await page.title();
@@ -224,18 +224,33 @@ async function scrapeRoomWithCookies(browser, room, facilityName, cfData) {
       return {};
     }
 
-    // カレンダー展開を待機（timebox要素が出現するまで、長めのタイムアウト）
+    // 日程選択セクションまでスクロール（カレンダーが画面下にあるため）
+    await page.evaluate(() => {
+      // 日程選択セクションを探してスクロール
+      const dateSection = document.querySelector('#userselect-datetime') ||
+                          document.querySelector('[class*="userselect-datetime"]') ||
+                          document.querySelector('h2, h3');
+      if (dateSection) {
+        dateSection.scrollIntoView({ behavior: 'instant', block: 'start' });
+      } else {
+        // セクションが見つからない場合はページ下部にスクロール
+        window.scrollTo(0, document.body.scrollHeight / 2);
+      }
+    });
+    await new Promise(resolve => setTimeout(resolve, 3000));
+
+    // カレンダー展開を待機（timebox要素が出現するまで）
     let timeboxFound = false;
     try {
-      await page.waitForSelector('input.timebox', { timeout: 20000 });
+      await page.waitForSelector('input.timebox', { timeout: 15000 });
       timeboxFound = true;
     } catch (e) {
-      // タイムアウトした場合、ページ操作を試みる
+      // タイムアウトした場合、さらにスクロールを試みる
     }
 
-    // timebox が見つからない場合、ページをスクロールして再試行
+    // timebox が見つからない場合、さらにスクロールして再試行
     if (!timeboxFound) {
-      // ページ全体をスクロール
+      // ページ下部にスクロール
       await page.evaluate(() => {
         window.scrollTo(0, document.body.scrollHeight);
       });
