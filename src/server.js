@@ -135,6 +135,154 @@ app.get('/api/debug/flaresolverr', async (req, res) => {
   res.json(results);
 });
 
+// API: OOO専用デバッグエンドポイント
+app.get('/api/debug/ooo', async (req, res) => {
+  const puppeteer = require('puppeteer');
+  const startTime = Date.now();
+  const results = { steps: [], errors: [] };
+
+  let browser;
+  try {
+    results.steps.push({ step: 'start', time: 0 });
+
+    const isCloudRun = !!process.env.K_SERVICE;
+    const launchOptions = {
+      headless: 'new',
+      args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage', '--disable-gpu']
+    };
+    if (isCloudRun) {
+      launchOptions.executablePath = '/usr/bin/chromium';
+    }
+
+    browser = await puppeteer.launch(launchOptions);
+    results.steps.push({ step: 'browser_launched', time: Date.now() - startTime });
+
+    const page = await browser.newPage();
+    await page.setUserAgent('Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36');
+    await page.setViewport({ width: 1280, height: 800 });
+    results.steps.push({ step: 'page_created', time: Date.now() - startTime });
+
+    const url = 'https://sw.gflow.cloud/ooo-fukuoka/calendar_open';
+    results.url = url;
+
+    await page.goto(url, { waitUntil: 'networkidle2', timeout: 90000 });
+    results.steps.push({ step: 'page_loaded', time: Date.now() - startTime });
+
+    // ページタイトル確認
+    const pageTitle = await page.title();
+    results.pageTitle = pageTitle;
+
+    // 初回待機
+    await new Promise(r => setTimeout(r, 5000));
+    results.steps.push({ step: 'wait_5s', time: Date.now() - startTime });
+
+    // gold-table確認
+    const tableInfo = await page.evaluate(() => {
+      const tables = document.querySelectorAll('table.gold-table');
+      const allTables = document.querySelectorAll('table');
+      const labels = document.querySelectorAll('label.box-room');
+
+      return {
+        goldTableCount: tables.length,
+        allTableCount: allTables.length,
+        labelCount: labels.length,
+        bodyLength: document.body.innerHTML.length,
+        hasCalendar: !!document.querySelector('[class*="calendar"]'),
+        firstTableClasses: allTables[0]?.className || 'none',
+        labelTexts: Array.from(labels).slice(0, 3).map(l => l.textContent.substring(0, 30))
+      };
+    });
+    results.tableInfo = tableInfo;
+    results.steps.push({ step: 'table_check', time: Date.now() - startTime });
+
+    // スクロールしてテーブルを探す
+    await page.evaluate(() => {
+      window.scrollTo(0, document.body.scrollHeight);
+    });
+    await new Promise(r => setTimeout(r, 3000));
+
+    const afterScrollInfo = await page.evaluate(() => {
+      const tables = document.querySelectorAll('table.gold-table');
+      return { goldTableCount: tables.length };
+    });
+    results.afterScrollInfo = afterScrollInfo;
+    results.steps.push({ step: 'after_scroll', time: Date.now() - startTime });
+
+    // さらに待機してからテーブルデータ取得を試みる
+    await new Promise(r => setTimeout(r, 5000));
+
+    const tableData = await page.evaluate(() => {
+      const data = {};
+      const year = new Date().getFullYear();
+      const tables = document.querySelectorAll('table.gold-table');
+
+      if (tables.length < 2) {
+        return { error: 'Not enough tables', count: tables.length };
+      }
+
+      const headerTable = tables[0];
+      const dates = [];
+      const headerCells = headerTable.querySelectorAll('th');
+      headerCells.forEach(th => {
+        const text = th.textContent.trim();
+        const match = text.match(/(\d{2})\/(\d{2})/);
+        if (match) {
+          dates.push(`${year}-${match[1]}-${match[2]}`);
+        }
+      });
+
+      const bodyTable = tables[1];
+      const rows = bodyTable.querySelectorAll('tr');
+      let slotCount = 0;
+
+      rows.forEach(row => {
+        const cells = row.querySelectorAll('td');
+        if (cells.length < 2) return;
+
+        const firstCellText = cells[0].textContent;
+        const timeMatch = firstCellText.match(/(\d{2}:\d{2})~(\d{2}:\d{2})/);
+        if (!timeMatch) return;
+
+        const timeRange = timeMatch[1] + '〜' + timeMatch[2];
+
+        for (let i = 1; i < cells.length && i - 1 < dates.length; i++) {
+          const cell = cells[i];
+          const dateStr = dates[i - 1];
+          if (!dateStr) continue;
+
+          const isAvailable = cell.classList.contains('cursor') ||
+                             cell.querySelector('i.ri-checkbox-blank-circle-line') !== null;
+          const isUnavailable = cell.classList.contains('bg-gray') ||
+                                cell.querySelector('i.ri-close-line') !== null;
+
+          if (isAvailable && !isUnavailable) {
+            if (!data[dateStr]) data[dateStr] = [];
+            if (!data[dateStr].includes(timeRange)) {
+              data[dateStr].push(timeRange);
+              slotCount++;
+            }
+          }
+        }
+      });
+
+      return { dates: Object.keys(data).length, slotCount, sampleDates: dates.slice(0, 3) };
+    });
+    results.tableData = tableData;
+    results.steps.push({ step: 'data_extracted', time: Date.now() - startTime });
+
+    await browser.close();
+    results.success = true;
+    results.totalTime = Date.now() - startTime;
+    res.json(results);
+  } catch (error) {
+    if (browser) await browser.close().catch(() => {});
+    results.success = false;
+    results.error = error.message;
+    results.totalTime = Date.now() - startTime;
+    res.status(500).json(results);
+  }
+});
+
 // API: 脈専用デバッグエンドポイント
 app.get('/api/debug/myaku', async (req, res) => {
   const puppeteer = require('puppeteer');
