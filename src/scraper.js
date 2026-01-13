@@ -23,26 +23,72 @@ const yogan = require('./sites/yogan');
 const healthMonitor = require('./health-monitor');
 const notifier = require('./notifier');
 
+// ストレージ設定
 const DATA_FILE = path.join(__dirname, '../data/availability.json');
+const GCS_BUCKET = process.env.GCS_BUCKET || 'private-sauna-data';
+const GCS_FILE = 'availability.json';
 
-// キャッシュデータの読み込み
-function loadData() {
+// Cloud Storage（Cloud Run環境のみ）
+let gcsFile = null;
+if (isCloudRun) {
+  try {
+    const { Storage } = require('@google-cloud/storage');
+    const storage = new Storage();
+    gcsFile = storage.bucket(GCS_BUCKET).file(GCS_FILE);
+    console.log(`GCS永続化有効: gs://${GCS_BUCKET}/${GCS_FILE}`);
+  } catch (error) {
+    console.error('GCS初期化エラー:', error.message);
+  }
+}
+
+// キャッシュデータの読み込み（非同期）
+async function loadData() {
+  // Cloud Run環境: GCSから読み込み
+  if (isCloudRun && gcsFile) {
+    try {
+      const [exists] = await gcsFile.exists();
+      if (exists) {
+        const [content] = await gcsFile.download();
+        console.log('GCSからデータ読み込み成功');
+        return JSON.parse(content.toString());
+      }
+    } catch (error) {
+      console.error('GCS読み込みエラー:', error.message);
+    }
+  }
+
+  // ローカル環境またはGCSフォールバック: ファイルシステム
   try {
     if (fs.existsSync(DATA_FILE)) {
       return JSON.parse(fs.readFileSync(DATA_FILE, 'utf8'));
     }
   } catch (error) {
-    console.error('データ読み込みエラー:', error.message);
+    console.error('ローカルファイル読み込みエラー:', error.message);
   }
+
   return { lastUpdated: null, facilities: {} };
 }
 
-// キャッシュデータの保存
-function saveData(data) {
+// キャッシュデータの保存（非同期）
+async function saveData(data) {
+  // Cloud Run環境: GCSに保存
+  if (isCloudRun && gcsFile) {
+    try {
+      await gcsFile.save(JSON.stringify(data, null, 2), {
+        contentType: 'application/json',
+        resumable: false
+      });
+      console.log('GCSにデータ保存成功');
+    } catch (error) {
+      console.error('GCS保存エラー:', error.message);
+    }
+  }
+
+  // ローカルファイルにも保存（バックアップ/ローカル環境用）
   try {
     fs.writeFileSync(DATA_FILE, JSON.stringify(data, null, 2), 'utf8');
   } catch (error) {
-    console.error('データ保存エラー:', error.message);
+    console.error('ローカルファイル保存エラー:', error.message);
   }
 }
 
@@ -140,7 +186,7 @@ async function scrapeWithMonitoring(siteName, scrapeFunc, browser) {
 // 全サイトスクレイピング
 async function scrapeAll() {
   const browser = await launchBrowser();
-  const data = loadData();
+  const data = await loadData();
   data.lastUpdated = new Date().toISOString();
   data.facilities = {};
 
@@ -226,7 +272,7 @@ async function scrapeAll() {
       }
     }
 
-    saveData(data);
+    await saveData(data);
     return data;
   } finally {
     await browser.close();
@@ -234,8 +280,8 @@ async function scrapeAll() {
 }
 
 // 指定日の空き状況を取得
-function getAvailability(date) {
-  const data = loadData();
+async function getAvailability(date) {
+  const data = await loadData();
   const result = {
     date,
     lastUpdated: data.lastUpdated,

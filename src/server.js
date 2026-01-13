@@ -12,9 +12,9 @@ const PORT = process.env.PORT || 3000;
 app.use(express.static(path.join(__dirname, '../public')));
 
 // API: 空き状況取得
-app.get('/api/availability', (req, res) => {
+app.get('/api/availability', async (req, res) => {
   const date = req.query.date || new Date().toISOString().split('T')[0];
-  const data = getAvailability(date);
+  const data = await getAvailability(date);
   res.json(data);
 });
 
