@@ -527,6 +527,115 @@ app.get('/api/debug/myaku', async (req, res) => {
   }
 });
 
+// API: GIRAFFE専用デバッグエンドポイント
+app.get('/api/debug/giraffe', async (req, res) => {
+  const puppeteer = require('puppeteer-extra');
+  const StealthPlugin = require('puppeteer-extra-plugin-stealth');
+  puppeteer.use(StealthPlugin());
+  const flaresolverr = require('./flaresolverr');
+
+  const startTime = Date.now();
+  const results = { steps: [], errors: [] };
+
+  let browser;
+  try {
+    results.steps.push({ step: 'start', time: 0 });
+
+    // FlareSolverr Cookie取得
+    let cfData = null;
+    const isFlareSolverrAvailable = await flaresolverr.isAvailable();
+    results.flareSolverrAvailable = isFlareSolverrAvailable;
+
+    if (isFlareSolverrAvailable) {
+      try {
+        cfData = await flaresolverr.getPageHtml('https://reserva.be/giraffe_minamitenjin', 60000);
+        results.cfCookieCount = cfData?.cookies?.length || 0;
+        results.steps.push({ step: 'flaresolverr_cookies', time: Date.now() - startTime });
+      } catch (e) {
+        results.errors.push({ step: 'flaresolverr', error: e.message });
+      }
+    }
+
+    // ブラウザ起動
+    const isCloudRun = !!process.env.K_SERVICE;
+    const launchOptions = {
+      headless: 'new',
+      args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage', '--disable-gpu', '--disable-blink-features=AutomationControlled']
+    };
+    if (isCloudRun) {
+      launchOptions.executablePath = '/usr/bin/chromium';
+    }
+    results.isCloudRun = isCloudRun;
+
+    browser = await puppeteer.launch(launchOptions);
+    results.steps.push({ step: 'browser_launched', time: Date.now() - startTime });
+
+    const page = await browser.newPage();
+    await page.setViewport({ width: 1280, height: 900 });
+
+    // FlareSolverr Cookieを設定
+    if (cfData?.cookies && cfData.cookies.length > 0) {
+      const puppeteerCookies = cfData.cookies.map(cookie => ({
+        name: cookie.name,
+        value: cookie.value,
+        domain: cookie.domain || '.reserva.be',
+        path: cookie.path || '/'
+      }));
+      await page.setCookie(...puppeteerCookies);
+      results.steps.push({ step: 'cookies_set', time: Date.now() - startTime });
+    }
+
+    // GIRAFFEページにアクセス（最初の部屋）
+    const url = 'https://reserva.be/giraffe_minamitenjin/reserve?mode=service_staff&search_evt_no=91eJwzNDAyszAGAAQpATU&ctg_no=05eJwzMjQ2NgIAAvQA_A';
+    results.url = url;
+
+    await page.goto(url, { waitUntil: 'networkidle0', timeout: 90000 });
+    results.steps.push({ step: 'page_loaded', time: Date.now() - startTime });
+
+    // Cloudflareチャレンジ確認
+    const pageTitle = await page.title();
+    results.pageTitle = pageTitle;
+    results.isCloudflareChallenge = pageTitle.includes('Just a moment') || pageTitle === '';
+    results.steps.push({ step: 'cloudflare_check', time: Date.now() - startTime });
+
+    // 待機
+    await new Promise(r => setTimeout(r, 5000));
+
+    // input.timebox要素を確認
+    const timeboxInfo = await page.evaluate(() => {
+      const allTimeboxes = document.querySelectorAll('input.timebox');
+      const vacantTimeboxes = document.querySelectorAll('input.timebox[data-vacancy="1"]');
+
+      const samples = Array.from(vacantTimeboxes).slice(0, 5).map(input => ({
+        targetgroup: input.dataset.targetgroup,
+        time: input.dataset.time,
+        vacancy: input.dataset.vacancy
+      }));
+
+      return {
+        totalTimeboxCount: allTimeboxes.length,
+        vacantTimeboxCount: vacantTimeboxes.length,
+        samples
+      };
+    });
+    results.timeboxInfo = timeboxInfo;
+    results.steps.push({ step: 'timebox_analysis', time: Date.now() - startTime });
+
+    await browser.close();
+    results.steps.push({ step: 'browser_closed', time: Date.now() - startTime });
+
+    results.success = true;
+    results.totalTime = Date.now() - startTime;
+    res.json(results);
+  } catch (error) {
+    if (browser) await browser.close().catch(() => {});
+    results.success = false;
+    results.error = error.message;
+    results.totalTime = Date.now() - startTime;
+    res.status(500).json(results);
+  }
+});
+
 // サーバー起動
 app.listen(PORT, () => {
   console.log(`サーバー起動: http://localhost:${PORT}`);
