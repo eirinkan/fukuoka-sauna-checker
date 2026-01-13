@@ -22,6 +22,54 @@ function isWeekdayDate(dateStr) {
   return day >= 1 && day <= 5; // 月〜金
 }
 
+/**
+ * 時間枠を整形する
+ * - 同じ時間帯（XX:00〜XX:50）が全て空いていれば「XX時代全て」
+ * - 一部のみ空いていれば個別に「XX:10〜、XX:20〜」
+ */
+function formatTimeSlots(slots) {
+  // 時間帯ごとにグループ化（XX時台）
+  const hourGroups = {};
+
+  for (const slot of slots) {
+    // "HH:MM〜" 形式から時間と分を抽出
+    const match = slot.match(/^(\d{2}):(\d{2})〜$/);
+    if (!match) continue;
+
+    const hour = parseInt(match[1]);
+    const minute = parseInt(match[2]);
+
+    if (!hourGroups[hour]) {
+      hourGroups[hour] = [];
+    }
+    hourGroups[hour].push(minute);
+  }
+
+  const result = [];
+  const hours = Object.keys(hourGroups).map(Number).sort((a, b) => a - b);
+
+  for (const hour of hours) {
+    const minutes = hourGroups[hour].sort((a, b) => a - b);
+
+    // 00, 10, 20, 30, 40, 50 の6枠全て揃っているか確認
+    const allMinutes = [0, 10, 20, 30, 40, 50];
+    const hasAll = allMinutes.every(m => minutes.includes(m));
+
+    if (hasAll) {
+      // 全枠空き → 「XX時代全て」
+      result.push(`${hour}時代全て`);
+    } else {
+      // 一部のみ → 個別表示「XX:MM〜」
+      for (const minute of minutes) {
+        const pad = (n) => n < 10 ? '0' + n : '' + n;
+        result.push(`${pad(hour)}:${pad(minute)}〜`);
+      }
+    }
+  }
+
+  return result;
+}
+
 // 1つのプランをスクレイピング
 async function scrapePlan(page, planName) {
   // メニュー選択ボタンをクリック
@@ -166,17 +214,9 @@ async function scrapePlan(page, planName) {
 
       const startHour = jstHour;
       const startMin = parseInt(utcMin);
-      let endMin = startMin + 120;
-      let endHour = startHour;
-      while (endMin >= 60) {
-        endMin = endMin - 60;
-        endHour = endHour + 1;
-      }
-      if (endHour >= 24) {
-        endHour = endHour - 24;
-      }
 
-      const timeStr = pad(startHour) + ':' + pad(startMin) + '〜' + pad(endHour) + ':' + pad(endMin);
+      // 開始時間のみの表示「HH:MM〜」形式
+      const timeStr = pad(startHour) + ':' + pad(startMin) + '〜';
 
       if (!availableSlots[dateStr]) {
         availableSlots[dateStr] = [];
@@ -224,12 +264,12 @@ async function scrape(browser) {
           return (parseInt(aParts[0]) * 60 + parseInt(aParts[1])) - (parseInt(bParts[0]) * 60 + parseInt(bParts[1]));
         });
 
-        // 00分のスロットのみ
-        const simplifiedSlots = sortedTimes.filter(t => t.indexOf(':00') !== -1);
+        // 時間帯をグループ化して表示形式を整える
+        const formattedSlots = formatTimeSlots(sortedTimes);
 
         result.dates[dateStr] = {};
         for (const course of COURSE_NAMES) {
-          result.dates[dateStr][course] = simplifiedSlots;
+          result.dates[dateStr][course] = formattedSlots;
         }
       }
     }
