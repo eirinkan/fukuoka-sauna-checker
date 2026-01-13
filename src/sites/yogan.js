@@ -7,9 +7,10 @@
  * - 2時間30分制
  * - 時間枠: 10:00〜, 13:10〜, 16:20〜, 20:30〜
  *
- * Cloudflare保護あり → puppeteer-extra stealth pluginで対応
- * カレンダーの日付をクリックして時間枠を取得
+ * FlareSolverrでCloudflare Cookieを取得 → Puppeteerで使用
  */
+
+const flaresolverr = require('../flaresolverr');
 
 const URL = 'https://reserva.be/saunayogan/reserve?mode=service_staff&search_evt_no=eeeJyzMDY2MQIAAxwBBQ';
 
@@ -27,55 +28,93 @@ function formatLocalDate(date) {
 }
 
 /**
- * Cloudflareチャレンジ通過を待機
+ * FlareSolverrでCloudflare Cookieを取得
  */
-async function waitForCloudflareChallenge(page, maxWait = 30000) {
-  const startTime = Date.now();
+async function getCloudfareCookies() {
+  try {
+    const testUrl = 'https://reserva.be/saunayogan';
+    console.log('    → サウナヨーガン: FlareSolverr Cookie取得中...');
+    const { cookies, userAgent } = await flaresolverr.getPageHtml(testUrl, 60000);
 
-  while (Date.now() - startTime < maxWait) {
-    const pageTitle = await page.title();
-    const pageContent = await page.content();
-
-    // Cloudflareチャレンジページかどうかチェック
-    const isChallenge =
-      pageTitle.includes('Just a moment') ||
-      pageTitle.includes('Cloudflare') ||
-      pageTitle.includes('しばらくお待ちください') ||
-      pageContent.includes('Checking your browser') ||
-      pageContent.includes('cf-browser-verification');
-
-    if (!isChallenge) {
-      return true; // チャレンジ通過
+    if (cookies && cookies.length > 0) {
+      console.log(`    → サウナヨーガン: Cookie ${cookies.length}個取得成功`);
+      return { cookies, userAgent };
     }
-
-    // 1秒待って再チェック
-    await new Promise(resolve => setTimeout(resolve, 1000));
+  } catch (error) {
+    console.log(`    → サウナヨーガン: FlareSolverr Cookie取得失敗 - ${error.message}`);
   }
 
-  return false; // タイムアウト
+  return null;
 }
 
 /**
- * Puppeteerによるスクレイピング（puppeteer-extra stealth対応）
+ * Puppeteerによるスクレイピング（FlareSolverr Cookie使用）
  */
 async function scrape(browser) {
   const page = await browser.newPage();
 
   try {
-    console.log('    → サウナヨーガン: puppeteer-extra stealthモードで取得開始');
+    console.log('    → サウナヨーガン: スクレイピング開始');
 
-    // Viewportのみ設定（stealth pluginがUserAgentなどを処理）
+    // FlareSolverrからCloudflare Cookieを取得
+    let cfData = null;
+    const isFlareSolverrAvailable = await flaresolverr.isAvailable();
+    if (isFlareSolverrAvailable) {
+      cfData = await getCloudfareCookies();
+    } else {
+      console.log('    → サウナヨーガン: FlareSolverr利用不可（直接アクセス）');
+    }
+
+    // Viewportを設定
     await page.setViewport({ width: 1280, height: 900 });
 
+    // FlareSolverrから取得したUser-Agentを使用
+    const userAgent = cfData?.userAgent || 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36';
+    await page.setUserAgent(userAgent);
+
+    // FlareSolverrから取得したCookieを設定
+    if (cfData?.cookies && cfData.cookies.length > 0) {
+      const puppeteerCookies = cfData.cookies.map(cookie => ({
+        name: cookie.name,
+        value: cookie.value,
+        domain: cookie.domain || '.reserva.be',
+        path: cookie.path || '/',
+        expires: cookie.expiry || -1,
+        httpOnly: cookie.httpOnly || false,
+        secure: cookie.secure || false,
+        sameSite: cookie.sameSite || 'Lax'
+      }));
+      await page.setCookie(...puppeteerCookies);
+      console.log(`    → サウナヨーガン: Cookieを設定 (${puppeteerCookies.length}個)`);
+    }
+
+    // ボット検知回避
+    await page.evaluateOnNewDocument(() => {
+      Object.defineProperty(navigator, 'webdriver', { get: () => false });
+      Object.defineProperty(navigator, 'plugins', { get: () => [1, 2, 3, 4, 5] });
+      Object.defineProperty(navigator, 'languages', { get: () => ['ja-JP', 'ja', 'en-US', 'en'] });
+      window.chrome = { runtime: {} };
+    });
+
+    await page.setExtraHTTPHeaders({
+      'Accept-Language': 'ja,en-US;q=0.9,en;q=0.8',
+      'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8'
+    });
+
     // ページにアクセス
-    await page.goto(URL, { waitUntil: 'networkidle2', timeout: 90000 });
+    await page.goto(URL, { waitUntil: 'networkidle0', timeout: 90000 });
 
-    // Cloudflareチャレンジ通過を待機
-    const challengePassed = await waitForCloudflareChallenge(page, 30000);
+    // ページ読み込み完了を待機
+    await new Promise(resolve => setTimeout(resolve, 5000));
 
-    if (!challengePassed) {
-      console.log('    → サウナヨーガン: Cloudflareチャレンジ通過失敗');
-      // 空のデータを返す（エラーにしない）
+    // デバッグ: ページタイトル確認
+    const pageTitle = await page.title();
+    console.log(`    → サウナヨーガン: ページタイトル = "${pageTitle}"`);
+
+    // Cloudflareチャレンジページの検出
+    if (pageTitle.includes('Just a moment') || pageTitle.includes('しばらくお待ちください') || pageTitle === '') {
+      console.log('    → サウナヨーガン: Cloudflareチャレンジページ検出');
+      // 空のデータを返す
       const result = { dates: {} };
       const today = new Date();
       for (let i = 0; i < 7; i++) {
@@ -87,13 +126,6 @@ async function scrape(browser) {
       }
       return result;
     }
-
-    // ページ読み込み完了を待機
-    await new Promise(resolve => setTimeout(resolve, 5000));
-
-    // デバッグ: ページタイトル確認
-    const pageTitle = await page.title();
-    console.log(`    → サウナヨーガン: ページタイトル = "${pageTitle}"`);
 
     // カレンダーのinput数を確認
     const inputCount = await page.evaluate(() => {
@@ -141,7 +173,7 @@ async function scrape(browser) {
 
       // 2日目以降は再度ページにアクセス
       if (i > 0) {
-        await page.goto(URL, { waitUntil: 'networkidle2', timeout: 60000 });
+        await page.goto(URL, { waitUntil: 'networkidle0', timeout: 60000 });
         await new Promise(resolve => setTimeout(resolve, 3000));
       }
 

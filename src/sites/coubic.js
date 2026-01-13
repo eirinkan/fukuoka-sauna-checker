@@ -51,8 +51,9 @@ function formatTimeSlots(slots) {
   for (const hour of hours) {
     const minutes = hourGroups[hour].sort((a, b) => a - b);
 
-    // 00, 10, 20, 30, 40, 50 の6枠全て揃っているか確認
-    const allMinutes = [0, 10, 20, 30, 40, 50];
+    // 20時代は最終受付が20:30なので、4枠(00,10,20,30)が揃っていれば「20時代全て」
+    // それ以外は6枠(00,10,20,30,40,50)が揃っている必要がある
+    const allMinutes = hour === 20 ? [0, 10, 20, 30] : [0, 10, 20, 30, 40, 50];
     const hasAll = allMinutes.every(m => minutes.includes(m));
 
     if (hasAll) {
