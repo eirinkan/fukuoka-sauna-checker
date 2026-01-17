@@ -464,21 +464,29 @@ app.get('/api/debug/myaku', async (req, res) => {
     const url = 'https://spot-ly.jp/ja/hotels/176';
 
     results.url = url;
-    await page.goto(url, { waitUntil: 'networkidle2', timeout: 60000 });
+    await page.goto(url, { waitUntil: 'networkidle0', timeout: 60000 });
     results.steps.push({ step: 'page_loaded', time: Date.now() - startTime });
 
-    await new Promise(r => setTimeout(r, 5000));
-    results.steps.push({ step: 'wait_5s_complete', time: Date.now() - startTime });
+    // react-select要素が表示されるまで待機（最大20秒）
+    try {
+      await page.waitForFunction(() => {
+        return document.querySelectorAll('[class*="singleValue"]').length > 0 ||
+               document.querySelectorAll('input[id^="react-select"]').length > 0;
+      }, { timeout: 20000 });
+      results.steps.push({ step: 'react_select_found', time: Date.now() - startTime });
+    } catch (e) {
+      results.steps.push({ step: 'react_select_timeout', time: Date.now() - startTime, error: e.message });
+    }
 
     // ページ情報取得
     const pageTitle = await page.title();
     results.pageTitle = pageTitle;
 
-    // プラン表示確認（スクロールして全プラン読み込み）
+    // スクロールして全プランを読み込み
     await page.evaluate(() => window.scrollTo(0, 1000));
-    await new Promise(r => setTimeout(r, 2000));
+    await new Promise(r => setTimeout(r, 1000));
     await page.evaluate(() => window.scrollTo(0, 2000));
-    await new Promise(r => setTimeout(r, 2000));
+    await new Promise(r => setTimeout(r, 1000));
     await page.evaluate(() => window.scrollTo(0, 0));
     await new Promise(r => setTimeout(r, 1000));
 

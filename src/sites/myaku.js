@@ -92,15 +92,24 @@ async function scrape(puppeteerBrowser) {
     // 日付パラメータなしでアクセス（パラメータ付きだと「空室が見つかりませんでした」と表示される）
     const directUrl = BASE_URL;
 
-    await page.goto(directUrl, { waitUntil: 'networkidle2', timeout: 60000 });
+    await page.goto(directUrl, { waitUntil: 'networkidle0', timeout: 60000 });
     await new Promise(r => setTimeout(r, 3000));
 
-    // プランカードが表示されるまで待機
+    // react-select要素（人数ドロップダウン）が表示されるまで待機
     try {
-      await page.waitForSelector('button.bg-black', { timeout: 10000 });
+      await page.waitForFunction(() => {
+        return document.querySelectorAll('[class*="-control"]').length > 0;
+      }, { timeout: 20000 });
+      console.log('    → 脈: react-select要素を検出');
     } catch (e) {
-      console.log('    → 脈: プランカードが表示されない');
-      return { dates: {} };
+      console.log('    → 脈: react-select要素が見つからない（タイムアウト）');
+      // フォールバック: プランカードが表示されているか確認
+      try {
+        await page.waitForSelector('button.bg-black', { timeout: 5000 });
+      } catch (e2) {
+        console.log('    → 脈: プランカードも表示されない');
+        return { dates: {} };
+      }
     }
 
     // 各プランを処理
