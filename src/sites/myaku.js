@@ -283,10 +283,13 @@ async function scrape(puppeteerBrowser) {
         await page.keyboard.press('Escape');
         await new Promise(r => setTimeout(r, 1000));
 
-        // ページをリロードして次のプランに備える（モーダル状態をリセット）
+        // ページをリロードして次のプランに備える
+        // リロード後は毎回control要素を数えなおす
         if (plan.pageIndex < PLANS.length - 1) {
           await page.goto(directUrl, { waitUntil: 'networkidle2', timeout: 60000 });
-          await new Promise(r => setTimeout(r, 2000));
+          await new Promise(r => setTimeout(r, 3000));
+          // プランカードが表示されるまで待機
+          await page.waitForSelector('[class*="-control"]', { timeout: 10000 }).catch(() => {});
         }
 
       } catch (e) {
