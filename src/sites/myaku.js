@@ -7,19 +7,22 @@
  * - 必ずモーダルを開いて時間帯ボタンのdisabled属性で判定
  *
  * スクレイピングフロー:
- * 1. 7日間の日付範囲パラメータ付きURLにアクセス（1回だけ）
- * 2. 各プランに対して：
+ * 1. FlareSolverrでCookieとUserAgentを取得（ボット検出回避）
+ * 2. 7日間の日付範囲パラメータ付きURLにアクセス（1回だけ）
+ * 3. 各プランに対して：
  *    - 人数を1名に設定
  *    - 「予約する」ボタンをクリックしてモーダルを開く
  *    - モーダル内の7日×時間帯テーブルからdisabled属性で空き判定
  *    - Escapeでモーダルを閉じる
  *
- * 注意: puppeteer-extra-plugin-stealthを使用（ボット検出回避）
+ * 注意: FlareSolverr + puppeteer-extra-plugin-stealthを使用（ボット検出回避）
  */
 
 const puppeteerExtra = require('puppeteer-extra');
 const StealthPlugin = require('puppeteer-extra-plugin-stealth');
 puppeteerExtra.use(StealthPlugin());
+
+const flaresolverr = require('../flaresolverr');
 
 const BASE_URL = 'https://spot-ly.jp/ja/hotels/176';
 
@@ -74,8 +77,36 @@ function formatLocalDate(date) {
   return `${year}-${month}-${day}`;
 }
 
+/**
+ * FlareSolverrでspot-ly.jpのCookieを取得（ボット検出回避）
+ */
+async function getSpotlyCookies() {
+  try {
+    console.log('    → 脈: FlareSolverr Cookie取得中...');
+    const { cookies, userAgent } = await flaresolverr.getPageHtml(BASE_URL, 60000);
+
+    if (cookies && cookies.length > 0) {
+      console.log(`    → 脈: Cookie ${cookies.length}個取得成功`);
+      return { cookies, userAgent };
+    }
+  } catch (error) {
+    console.log(`    → 脈: FlareSolverr Cookie取得失敗 - ${error.message}`);
+  }
+
+  return null;
+}
+
 async function scrape(puppeteerBrowser) {
-  console.log('    → 脈: Stealthプラグイン付きブラウザを起動');
+  console.log('    → 脈: FlareSolverr + Stealthプラグインでスクレイピング開始');
+
+  // FlareSolverrからCookieを取得（ボット検出回避）
+  let cfData = null;
+  const isFlareSolverrAvailable = await flaresolverr.isAvailable();
+  if (isFlareSolverrAvailable) {
+    cfData = await getSpotlyCookies();
+  } else {
+    console.log('    → 脈: FlareSolverr利用不可（直接アクセス）');
+  }
 
   // Cloud Run環境ではボット検出されるため、stealthプラグイン付きで独自ブラウザを起動
   const isCloudRun = !!process.env.K_SERVICE;
@@ -89,8 +120,40 @@ async function scrape(puppeteerBrowser) {
 
   const browser = await puppeteerExtra.launch(launchOptions);
   const page = await browser.newPage();
-  await page.setUserAgent('Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36');
+
+  // FlareSolverrから取得したUserAgentを使用
+  const userAgent = cfData?.userAgent || 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36';
+  await page.setUserAgent(userAgent);
   await page.setViewport({ width: 1280, height: 900 });
+
+  // FlareSolverrから取得したCookieを設定
+  if (cfData?.cookies && cfData.cookies.length > 0) {
+    const puppeteerCookies = cfData.cookies.map(cookie => ({
+      name: cookie.name,
+      value: cookie.value,
+      domain: cookie.domain || '.spot-ly.jp',
+      path: cookie.path || '/',
+      expires: cookie.expiry || -1,
+      httpOnly: cookie.httpOnly || false,
+      secure: cookie.secure || false,
+      sameSite: cookie.sameSite || 'Lax'
+    }));
+    await page.setCookie(...puppeteerCookies);
+    console.log(`    → 脈: Cookieを設定 (${puppeteerCookies.length}個)`);
+  }
+
+  // ボット検知回避スクリプト
+  await page.evaluateOnNewDocument(() => {
+    Object.defineProperty(navigator, 'webdriver', { get: () => false });
+    Object.defineProperty(navigator, 'plugins', { get: () => [1, 2, 3, 4, 5] });
+    Object.defineProperty(navigator, 'languages', { get: () => ['ja-JP', 'ja', 'en-US', 'en'] });
+    window.chrome = { runtime: {} };
+  });
+
+  await page.setExtraHTTPHeaders({
+    'Accept-Language': 'ja,en-US;q=0.9,en;q=0.8',
+    'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8'
+  });
 
   try {
     const result = { dates: {} };
