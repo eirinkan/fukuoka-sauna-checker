@@ -351,7 +351,9 @@ async function scrape(puppeteerBrowser) {
           return slots;
         });
 
-        console.log(`    → 脈: ${plan.name} - 取得セル数=${modalSlots.length}`);
+        // デバッグ: 取得した時間帯の最初の5件を出力
+        const first5Times = modalSlots.slice(0, 5).map(s => s.time);
+        console.log(`    → 脈: ${plan.name} - 取得セル数=${modalSlots.length}, 最初の5件=[${first5Times.join(', ')}]`);
 
         if (modalSlots.length > 0) {
           // 固定値を使用: 7日分のカレンダー、プラン定義のtimeSlotCount
