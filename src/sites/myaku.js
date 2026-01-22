@@ -96,8 +96,23 @@ async function getSpotlyCookies() {
   return null;
 }
 
+// 全体タイムアウト（2分）
+const SCRAPE_TIMEOUT_MS = 120000;
+
 async function scrape(puppeteerBrowser) {
   console.log('    → 脈: FlareSolverr + Stealthプラグインでスクレイピング開始');
+
+  const startTime = Date.now();
+
+  // タイムアウトチェック関数
+  const isTimedOut = () => {
+    const elapsed = Date.now() - startTime;
+    if (elapsed > SCRAPE_TIMEOUT_MS) {
+      console.log(`    → 脈: 全体タイムアウト (${Math.round(elapsed / 1000)}秒経過)`);
+      return true;
+    }
+    return false;
+  };
 
   // FlareSolverrからCookieを取得（ボット検出回避）
   let cfData = null;
@@ -172,8 +187,8 @@ async function scrape(puppeteerBrowser) {
     // 日付パラメータなしでアクセス（パラメータ付きだと「空室が見つかりませんでした」と表示される）
     const directUrl = BASE_URL;
 
-    await page.goto(directUrl, { waitUntil: 'networkidle0', timeout: 60000 });
-    await new Promise(r => setTimeout(r, 3000));
+    await page.goto(directUrl, { waitUntil: 'networkidle2', timeout: 30000 });
+    await new Promise(r => setTimeout(r, 2000));
 
     // ページの読み込み確認（ログ強化: 失敗時の状態を把握）
     const pageTitle = await page.title();
@@ -196,13 +211,13 @@ async function scrape(puppeteerBrowser) {
     try {
       await page.waitForFunction(() => {
         return document.querySelectorAll('[class*="-control"]').length > 0;
-      }, { timeout: 20000 });
+      }, { timeout: 10000 });
       console.log('    → 脈: react-select要素を検出');
     } catch (e) {
       console.log('    → 脈: react-select要素が見つからない（タイムアウト）');
       // フォールバック: プランカードが表示されているか確認
       try {
-        await page.waitForSelector('button.bg-black', { timeout: 5000 });
+        await page.waitForSelector('button.bg-black', { timeout: 3000 });
       } catch (e2) {
         console.log('    → 脈: プランカードも表示されない');
         return { dates: {} };
@@ -211,6 +226,12 @@ async function scrape(puppeteerBrowser) {
 
     // 各プランを処理
     for (const plan of PLANS) {
+      // タイムアウトチェック
+      if (isTimedOut()) {
+        console.log('    → 脈: タイムアウトのため残りプランをスキップ');
+        break;
+      }
+
       console.log(`    → 脈: ${plan.name} を処理中...`);
 
       try {
@@ -402,15 +423,31 @@ async function scrape(puppeteerBrowser) {
 
         // モーダルを閉じる
         await page.keyboard.press('Escape');
-        await new Promise(r => setTimeout(r, 1000));
+        await new Promise(r => setTimeout(r, 500));
 
-        // ページをリロードして次のプランに備える
-        // リロード後は毎回control要素を数えなおす
+        // 次のプランに備える（タイムアウトチェック後）
         if (plan.pageIndex < PLANS.length - 1) {
-          await page.goto(directUrl, { waitUntil: 'networkidle2', timeout: 60000 });
-          await new Promise(r => setTimeout(r, 3000));
-          // プランカードが表示されるまで待機
-          await page.waitForSelector('[class*="-control"]', { timeout: 10000 }).catch(() => {});
+          if (isTimedOut()) {
+            console.log('    → 脈: タイムアウトのため次のプラン処理をスキップ');
+            break;
+          }
+
+          // リロードではなく、ページ内で次のプランに移動
+          // ドロップダウンの状態をリセットするため、ページ上部にスクロール
+          await page.evaluate(() => window.scrollTo(0, 0));
+          await new Promise(r => setTimeout(r, 500));
+
+          // 既存のモーダルが閉じていることを確認
+          const modalClosed = await page.evaluate(() => {
+            const modal = document.querySelector('[role="dialog"]');
+            return !modal || modal.offsetParent === null;
+          });
+
+          if (!modalClosed) {
+            // モーダルがまだ開いている場合はもう一度Escapeを押す
+            await page.keyboard.press('Escape');
+            await new Promise(r => setTimeout(r, 500));
+          }
         }
 
       } catch (e) {
