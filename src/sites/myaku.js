@@ -378,16 +378,16 @@ async function scrape(puppeteerBrowser) {
 
           console.log(`    → 脈: ${plan.name} - テーブル構造: ${dateCount}日 × ${timeSlotCount}時間帯`);
 
-          // テーブル構造: DOMは行優先（row-major）で配置
-          // スロットの順序: (18日時間帯1, 19日時間帯1, 20日時間帯1, ...), (18日時間帯2, 19日時間帯2, ...)
-          // 各時間帯ごとに、全日付のセルが連続して並んでいる
+          // テーブル構造: DOMは列優先（column-major）で配置
+          // スロットの順序: (1日目時間帯1〜5), (2日目時間帯1〜5), ...
+          // 1日分の全時間帯が連続して並んでいる
           for (let dayIndex = 0; dayIndex < dateCount && dayIndex < targetDates.length; dayIndex++) {
             const dateStr = targetDates[dayIndex];
 
-            // この日付のスロットを取得（行優先: timeIndex * dateCount + dayIndex）
+            // この日付のスロットを取得（列優先: dayIndex * timeSlotCount + timeIndex）
             const daySlots = [];
             for (let timeIndex = 0; timeIndex < timeSlotCount; timeIndex++) {
-              const slotIndex = timeIndex * dateCount + dayIndex;
+              const slotIndex = dayIndex * timeSlotCount + timeIndex;
               if (modalData.slots[slotIndex]) {
                 daySlots.push(modalData.slots[slotIndex]);
               }
@@ -432,22 +432,12 @@ async function scrape(puppeteerBrowser) {
             break;
           }
 
-          // リロードではなく、ページ内で次のプランに移動
-          // ドロップダウンの状態をリセットするため、ページ上部にスクロール
-          await page.evaluate(() => window.scrollTo(0, 0));
-          await new Promise(r => setTimeout(r, 500));
-
-          // 既存のモーダルが閉じていることを確認
-          const modalClosed = await page.evaluate(() => {
-            const modal = document.querySelector('[role="dialog"]');
-            return !modal || modal.offsetParent === null;
-          });
-
-          if (!modalClosed) {
-            // モーダルがまだ開いている場合はもう一度Escapeを押す
-            await page.keyboard.press('Escape');
-            await new Promise(r => setTimeout(r, 500));
-          }
+          // ページをリロードして次のプランに備える
+          // リロードしないとドロップダウンの状態が残り、次のプランで問題が起きる
+          await page.goto(directUrl, { waitUntil: 'networkidle2', timeout: 30000 });
+          await new Promise(r => setTimeout(r, 2000));
+          // プランカードが表示されるまで待機
+          await page.waitForSelector('[class*="-control"]', { timeout: 10000 }).catch(() => {});
         }
 
       } catch (e) {
