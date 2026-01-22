@@ -355,16 +355,18 @@ async function scrape(puppeteerBrowser) {
           const dateCount = modalData.dateCount || 7;
           const timeSlotCount = Math.floor(modalData.slots.length / dateCount);
 
-          // テーブル構造: DOMは列優先（column-major）で配置
-          // スロットの順序: (15日の時間帯1,2,3,4,5), (16日の時間帯1,2,3,4,5), ...
-          // 各日付ごとに、その日の全時間帯が連続して並んでいる
+          console.log(`    → 脈: ${plan.name} - テーブル構造: ${dateCount}日 × ${timeSlotCount}時間帯`);
+
+          // テーブル構造: DOMは行優先（row-major）で配置
+          // スロットの順序: (18日時間帯1, 19日時間帯1, 20日時間帯1, ...), (18日時間帯2, 19日時間帯2, ...)
+          // 各時間帯ごとに、全日付のセルが連続して並んでいる
           for (let dayIndex = 0; dayIndex < dateCount && dayIndex < targetDates.length; dayIndex++) {
             const dateStr = targetDates[dayIndex];
 
-            // この日付のスロットを取得（列優先: dayIndex * timeSlotCount + timeIndex）
+            // この日付のスロットを取得（行優先: timeIndex * dateCount + dayIndex）
             const daySlots = [];
             for (let timeIndex = 0; timeIndex < timeSlotCount; timeIndex++) {
-              const slotIndex = dayIndex * timeSlotCount + timeIndex;
+              const slotIndex = timeIndex * dateCount + dayIndex;
               if (modalData.slots[slotIndex]) {
                 daySlots.push(modalData.slots[slotIndex]);
               }
