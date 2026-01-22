@@ -161,6 +161,29 @@ const timeRange = timeParts[0].replace(/^0/, '') + '〜' + timeParts[1].replace(
 - URL形式: `?checkinDatetime=YYYY-MM-DD+00%3A00%3A00&checkoutDatetime=...`
 - 空き判定: ボタンの`disabled`属性で判定
 
+#### 脈スクレイパーの重要な技術的注意点（2026-01-22修正）
+
+1. **タイムゾーン設定が必須**
+   - Cloud RunはUTCで動作するため、`page.emulateTimezone('Asia/Tokyo')` を必ず設定すること
+   - これがないと時間帯が9時間ずれる（11:30→02:30）
+   - spot-ly.jpがブラウザのタイムゾーンに基づいて時間を表示するため
+
+2. **正規表現は `[0-9]` を使用**
+   - `\d` はCloud Run環境（Puppeteer/Chromium）で動作しないことがある
+   - 時間帯抽出には `/([0-9]{1,2}:[0-9]{2})-([0-9]{1,2}:[0-9]{2})/` を使用
+
+3. **ボタンテキストの形式**
+   - モーダル内の時間帯ボタンは `11:30-13:00` 形式（ハイフン区切り）
+   - 子要素は `<span>11:30</span><span>-</span><span>13:00</span>` だが、textContentで取得可能
+
+4. **過去の不具合と対処**
+   | 症状 | 原因 | 対処 |
+   |------|------|------|
+   | 時間が9時間ずれる | タイムゾーン未設定 | `page.emulateTimezone('Asia/Tokyo')` |
+   | 時間帯が0件 | `\d`が動作しない | `[0-9]`に変更 |
+   | タイムアウト | 処理時間超過 | 全体タイムアウト2分設定 |
+   | モーダルが開かない | react-selectの操作失敗 | mousedownイベントで発火 |
+
 ### reserva.be (GIRAFFE, サウナヨーガン)
 - 認証: **ログイン不要**
 - Cloudflare保護あり → FlareSolverrでCookie取得必須
