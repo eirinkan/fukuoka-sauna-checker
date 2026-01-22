@@ -331,41 +331,35 @@ async function scrape(puppeteerBrowser) {
         }
 
         // 4. モーダル内の時間帯ボタンを取得
-        // モーダルダイアログ内のボタンのみを対象にする
+        // ボタンの子要素に「HH:MM」形式のテキストが2つある場合、時間帯ボタンと判定
         const modalSlots = await page.evaluate(() => {
-          // モーダルダイアログを探す（「日時を選ぶ」というテキストを含む要素の親）
-          const modalHeader = Array.from(document.querySelectorAll('div')).find(
-            div => div.textContent.trim().startsWith('日時を選ぶ')
-          );
-
-          // モーダルのルート要素を特定（固定位置の親要素を探す）
-          let modalRoot = modalHeader;
-          while (modalRoot && modalRoot.parentElement) {
-            const style = window.getComputedStyle(modalRoot);
-            if (style.position === 'fixed' || modalRoot.getAttribute('role') === 'dialog') {
-              break;
-            }
-            modalRoot = modalRoot.parentElement;
-          }
-
-          // モーダル内のボタンのみを取得
-          const modalButtons = modalRoot
-            ? modalRoot.querySelectorAll('button')
-            : document.querySelectorAll('button');
-
+          const allButtons = document.querySelectorAll('button');
           const slots = [];
-          modalButtons.forEach(btn => {
-            const text = btn.textContent.trim();
-            // 時間帯パターン: 「11:30-13:00」または改行を含む「11:30\n-\n13:00」
-            const cleanText = text.replace(/\s+/g, '');
-            const timeMatch = cleanText.match(/^(\d{1,2}:\d{2})-(\d{1,2}:\d{2})$/);
-            if (timeMatch) {
+
+          allButtons.forEach(btn => {
+            // 子要素から時間パターン（HH:MM）を抽出
+            const children = btn.querySelectorAll('*');
+            const times = [];
+
+            children.forEach(child => {
+              // 直接のテキストノードのみをチェック（子要素のテキストは除く）
+              if (child.childNodes.length === 1 && child.childNodes[0].nodeType === 3) {
+                const text = child.textContent.trim();
+                if (/^\d{1,2}:\d{2}$/.test(text)) {
+                  times.push(text);
+                }
+              }
+            });
+
+            // 2つの時間が見つかった場合（開始時間と終了時間）
+            if (times.length === 2) {
               slots.push({
-                time: `${timeMatch[1]}〜${timeMatch[2]}`,
+                time: `${times[0]}〜${times[1]}`,
                 disabled: btn.disabled
               });
             }
           });
+
           return slots;
         });
 
