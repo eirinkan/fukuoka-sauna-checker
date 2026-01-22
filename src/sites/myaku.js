@@ -337,9 +337,9 @@ async function scrape(puppeteerBrowser) {
           const slots = [];
 
           allButtons.forEach(btn => {
-            const text = btn.textContent.trim();
-            // パターン: "11:30 - 13:00" または "11:30-13:00"（各種ハイフンに対応）
-            const match = text.match(/(\d{1,2}:\d{2})\s*[-－ー]\s*(\d{1,2}:\d{2})/);
+            const text = btn.textContent.trim().replace(/\s+/g, '');
+            // パターン: "11:30-13:00"（[0-9]を使用 - \dが動作しない環境対策）
+            const match = text.match(/([0-9]{1,2}:[0-9]{2})-([0-9]{1,2}:[0-9]{2})/);
             if (match) {
               slots.push({
                 time: `${match[1]}〜${match[2]}`,
