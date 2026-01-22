@@ -330,30 +330,16 @@ async function scrape(puppeteerBrowser) {
           continue;
         }
 
-        // 4. モーダル内の日付ヘッダーと時間帯ボタンを取得
-        // セレクタ `.border.border-gray-200.p-0` は動作しないため、button要素から直接取得
-        const modalData = await page.evaluate(() => {
-          // 日付ヘッダーを取得（14水, 15木, ...）
-          const dateHeaders = [];
-          const headerDivs = document.querySelectorAll('.w-full.text-center');
-          headerDivs.forEach(div => {
-            const text = div.textContent.trim();
-            // "14水11:30-13:00..." のような形式から日付部分を抽出
-            const match = text.match(/^(\d{1,2})([\u6708\u706b\u6c34\u6728\u91d1\u571f\u65e5])/);
-            if (match) {
-              dateHeaders.push({
-                day: parseInt(match[1]),
-                dayOfWeek: match[2]
-              });
-            }
-          });
-
-          // 時間帯ボタンを直接取得（セレクタではなくbutton要素から）
+        // 4. モーダル内の時間帯ボタンを取得
+        // button要素から直接取得し、時間帯パターンにマッチするものを抽出
+        const modalSlots = await page.evaluate(() => {
           const allButtons = document.querySelectorAll('button');
           const slots = [];
           allButtons.forEach(btn => {
             const text = btn.textContent.trim();
-            const timeMatch = text.match(/(\d{1,2}:\d{2})\s*-\s*(\d{1,2}:\d{2})/);
+            // 時間帯パターン: 「11:30-13:00」または改行を含む「11:30\n-\n13:00」
+            const cleanText = text.replace(/\s+/g, '');
+            const timeMatch = cleanText.match(/(\d{1,2}:\d{2})-(\d{1,2}:\d{2})/);
             if (timeMatch) {
               slots.push({
                 time: `${timeMatch[1]}〜${timeMatch[2]}`,
@@ -361,22 +347,18 @@ async function scrape(puppeteerBrowser) {
               });
             }
           });
-
-          return {
-            hasModal: slots.length > 0,
-            dateCount: dateHeaders.length,
-            dateHeaders,
-            slots
-          };
+          return slots;
         });
 
-        console.log(`    → 脈: ${plan.name} - 取得セル数=${modalData.slots.length}, 日付数=${modalData.dateCount}`);
+        console.log(`    → 脈: ${plan.name} - 取得セル数=${modalSlots.length}`);
 
-        if (modalData.hasModal && modalData.slots.length > 0) {
-          const dateCount = modalData.dateCount || 7;
-          const timeSlotCount = Math.floor(modalData.slots.length / dateCount);
+        if (modalSlots.length > 0) {
+          // 固定値を使用: 7日分のカレンダー、プラン定義のtimeSlotCount
+          const dateCount = 7;
+          const timeSlotCount = plan.timeSlotCount;
+          const expectedTotal = dateCount * timeSlotCount;
 
-          console.log(`    → 脈: ${plan.name} - テーブル構造: ${dateCount}日 × ${timeSlotCount}時間帯`);
+          console.log(`    → 脈: ${plan.name} - 期待値: ${dateCount}日 × ${timeSlotCount}時間帯 = ${expectedTotal}セル, 実際: ${modalSlots.length}セル`);
 
           // テーブル構造: DOMは列優先（column-major）で配置
           // スロットの順序: (1日目時間帯1〜5), (2日目時間帯1〜5), ...
@@ -388,8 +370,8 @@ async function scrape(puppeteerBrowser) {
             const daySlots = [];
             for (let timeIndex = 0; timeIndex < timeSlotCount; timeIndex++) {
               const slotIndex = dayIndex * timeSlotCount + timeIndex;
-              if (modalData.slots[slotIndex]) {
-                daySlots.push(modalData.slots[slotIndex]);
+              if (modalSlots[slotIndex]) {
+                daySlots.push(modalSlots[slotIndex]);
               }
             }
 
