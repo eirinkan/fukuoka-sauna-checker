@@ -136,6 +136,9 @@ async function scrape(puppeteerBrowser) {
   const browser = await puppeteerExtra.launch(launchOptions);
   const page = await browser.newPage();
 
+  // タイムゾーンを日本時間に設定（Cloud RunがUTCで動作するため必須）
+  await page.emulateTimezone('Asia/Tokyo');
+
   // FlareSolverrから取得したUserAgentを使用
   const userAgent = cfData?.userAgent || 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36';
   await page.setUserAgent(userAgent);
@@ -332,42 +335,26 @@ async function scrape(puppeteerBrowser) {
 
         // 4. モーダル内の時間帯ボタンを取得
         // ボタンのtextContentから「HH:MM - HH:MM」形式をシンプルに抽出
-        const { modalSlots, debugInfo } = await page.evaluate(() => {
+        const modalSlots = await page.evaluate(() => {
           const allButtons = document.querySelectorAll('button');
           const slots = [];
-          const sampleTexts = [];
 
-          allButtons.forEach((btn, idx) => {
+          allButtons.forEach(btn => {
             const text = btn.textContent.trim().replace(/\s+/g, '');
-            // 最初の30ボタンのテキストをサンプルとして保存
-            if (idx < 30) {
-              sampleTexts.push({ idx, text: text.substring(0, 30) });
-            }
             // パターン: "11:30-13:00"（[0-9]を使用 - \dが動作しない環境対策）
             const match = text.match(/([0-9]{1,2}:[0-9]{2})-([0-9]{1,2}:[0-9]{2})/);
             if (match) {
               slots.push({
                 time: `${match[1]}〜${match[2]}`,
-                disabled: btn.disabled,
-                btnIdx: idx
+                disabled: btn.disabled
               });
             }
           });
 
-          return {
-            modalSlots: slots,
-            debugInfo: {
-              totalButtons: allButtons.length,
-              sampleTexts: sampleTexts.slice(15, 25) // モーダル内ボタンあたりを表示
-            }
-          };
+          return slots;
         });
 
-        console.log(`    → 脈: ${plan.name} - ボタン総数=${debugInfo.totalButtons}, サンプル=${JSON.stringify(debugInfo.sampleTexts)}`);
-
-        // デバッグ: 取得した時間帯の最初の5件を出力
-        const first5Times = modalSlots.slice(0, 5).map(s => s.time);
-        console.log(`    → 脈: ${plan.name} - 取得セル数=${modalSlots.length}, 最初の5件=[${first5Times.join(', ')}]`);
+        console.log(`    → 脈: ${plan.name} - 取得セル数=${modalSlots.length}`);
 
         if (modalSlots.length > 0) {
           // 固定値を使用: 7日分のカレンダー、プラン定義のtimeSlotCount
