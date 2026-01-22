@@ -331,15 +331,34 @@ async function scrape(puppeteerBrowser) {
         }
 
         // 4. モーダル内の時間帯ボタンを取得
-        // button要素から直接取得し、時間帯パターンにマッチするものを抽出
+        // モーダルダイアログ内のボタンのみを対象にする
         const modalSlots = await page.evaluate(() => {
-          const allButtons = document.querySelectorAll('button');
+          // モーダルダイアログを探す（「日時を選ぶ」というテキストを含む要素の親）
+          const modalHeader = Array.from(document.querySelectorAll('div')).find(
+            div => div.textContent.trim().startsWith('日時を選ぶ')
+          );
+
+          // モーダルのルート要素を特定（固定位置の親要素を探す）
+          let modalRoot = modalHeader;
+          while (modalRoot && modalRoot.parentElement) {
+            const style = window.getComputedStyle(modalRoot);
+            if (style.position === 'fixed' || modalRoot.getAttribute('role') === 'dialog') {
+              break;
+            }
+            modalRoot = modalRoot.parentElement;
+          }
+
+          // モーダル内のボタンのみを取得
+          const modalButtons = modalRoot
+            ? modalRoot.querySelectorAll('button')
+            : document.querySelectorAll('button');
+
           const slots = [];
-          allButtons.forEach(btn => {
+          modalButtons.forEach(btn => {
             const text = btn.textContent.trim();
             // 時間帯パターン: 「11:30-13:00」または改行を含む「11:30\n-\n13:00」
             const cleanText = text.replace(/\s+/g, '');
-            const timeMatch = cleanText.match(/(\d{1,2}:\d{2})-(\d{1,2}:\d{2})/);
+            const timeMatch = cleanText.match(/^(\d{1,2}:\d{2})-(\d{1,2}:\d{2})$/);
             if (timeMatch) {
               slots.push({
                 time: `${timeMatch[1]}〜${timeMatch[2]}`,
