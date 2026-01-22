@@ -331,30 +331,18 @@ async function scrape(puppeteerBrowser) {
         }
 
         // 4. モーダル内の時間帯ボタンを取得
-        // ボタンの子要素に「HH:MM」形式のテキストが2つある場合、時間帯ボタンと判定
+        // ボタンのtextContentから「HH:MM - HH:MM」形式をシンプルに抽出
         const modalSlots = await page.evaluate(() => {
           const allButtons = document.querySelectorAll('button');
           const slots = [];
 
           allButtons.forEach(btn => {
-            // 子要素から時間パターン（HH:MM）を抽出
-            const children = btn.querySelectorAll('*');
-            const times = [];
-
-            children.forEach(child => {
-              // 直接のテキストノードのみをチェック（子要素のテキストは除く）
-              if (child.childNodes.length === 1 && child.childNodes[0].nodeType === 3) {
-                const text = child.textContent.trim();
-                if (/^\d{1,2}:\d{2}$/.test(text)) {
-                  times.push(text);
-                }
-              }
-            });
-
-            // 2つの時間が見つかった場合（開始時間と終了時間）
-            if (times.length === 2) {
+            const text = btn.textContent.trim();
+            // パターン: "11:30 - 13:00" または "11:30-13:00"（各種ハイフンに対応）
+            const match = text.match(/(\d{1,2}:\d{2})\s*[-－ー]\s*(\d{1,2}:\d{2})/);
+            if (match) {
               slots.push({
-                time: `${times[0]}〜${times[1]}`,
+                time: `${match[1]}〜${match[2]}`,
                 disabled: btn.disabled
               });
             }
