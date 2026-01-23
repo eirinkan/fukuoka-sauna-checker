@@ -1,19 +1,22 @@
 #!/usr/bin/env node
 /**
  * デイリーヘルスチェックスクリプト
- * 本番APIから空き状況を取得し、結果をデスクトップ通知で表示
+ * GIRAFFE、サウナヨーガン、脈の3施設のスクレイピングが正常か監視
  *
  * 使用方法:
  *   node scripts/daily-check.js
  *
  * スケジュール:
  *   9時から1時間ごとに実行を試み、成功したらその日は実行しない
+ *
+ * チェック内容:
+ *   - 7日分のデータを取得
+ *   - 監視対象施設の空き枠が全日程で0件ならエラー（スクレイピング故障の可能性）
  */
 
 require('dotenv').config({ path: require('path').join(__dirname, '../.env') });
 
 const {
-  notifyHealthCheckResult,
   isAlreadyExecutedToday,
   markAsExecuted,
   sendDesktopNotification
@@ -21,19 +24,43 @@ const {
 
 const PRODUCTION_URL = 'https://private-sauna-availability-526007709848.asia-northeast1.run.app';
 
+// 監視対象の施設（スクレイピングが壊れやすい施設）
+const WATCH_TARGETS = [
+  { keyword: 'GIRAFFE 南天神', shortName: 'GIRAFFE南天神' },
+  { keyword: 'GIRAFFE 天神', shortName: 'GIRAFFE天神' },
+  { keyword: 'サウナヨーガン', shortName: 'ヨーガン' },
+  { keyword: '脈', shortName: '脈' }
+];
+
+// チェックする日数
+const CHECK_DAYS = 7;
+
 /**
- * 本番APIから空き状況を取得
+ * 指定日のAPIから空き状況を取得
  */
 async function fetchAvailability(date) {
   const url = `${PRODUCTION_URL}/api/availability?date=${date}`;
-  console.log(`[API] ${url} を取得中...`);
-
   const response = await fetch(url);
   if (!response.ok) {
     throw new Error(`API error: ${response.status}`);
   }
-
   return await response.json();
+}
+
+/**
+ * 日付をYYYY-MM-DD形式で取得
+ */
+function getDateString(daysFromToday) {
+  const date = new Date();
+  date.setDate(date.getDate() + daysFromToday);
+  return date.toISOString().split('T')[0];
+}
+
+/**
+ * 監視対象施設を探す
+ */
+function findWatchedFacility(facilities, keyword) {
+  return facilities.find(f => f.name.includes(keyword));
 }
 
 /**
@@ -45,7 +72,8 @@ async function runHealthCheck() {
   const timeStr = today.toLocaleString('ja-JP', { timeZone: 'Asia/Tokyo' });
 
   console.log(`\n========================================`);
-  console.log(`デイリーヘルスチェック: ${timeStr}`);
+  console.log(`スクレイピング監視チェック: ${timeStr}`);
+  console.log(`監視対象: ${WATCH_TARGETS.map(t => t.shortName).join(', ')}`);
   console.log(`========================================\n`);
 
   // 既に今日実行済みかチェック
@@ -54,74 +82,83 @@ async function runHealthCheck() {
     return { skipped: true };
   }
 
-  const results = {
-    date: dateStr,
-    timestamp: timeStr,
-    facilities: [],
-    hasError: false,
-    hasWarning: false,
-    errors: [],
-    warnings: []
-  };
+  // 各施設の7日分の空き枠数を集計
+  const facilityStats = {};
+  for (const target of WATCH_TARGETS) {
+    facilityStats[target.keyword] = {
+      shortName: target.shortName,
+      totalSlots: 0,
+      daysWithSlots: 0,
+      found: false
+    };
+  }
+
+  const errors = [];
 
   try {
-    const data = await fetchAvailability(dateStr);
+    console.log(`[チェック] ${CHECK_DAYS}日分のデータを取得中...\n`);
 
-    // 各施設をチェック
-    for (const facility of data.facilities) {
-      const totalSlots = facility.rooms.reduce((sum, room) => sum + room.availableSlots.length, 0);
-      const roomCount = facility.rooms.length;
+    for (let i = 0; i < CHECK_DAYS; i++) {
+      const checkDate = getDateString(i);
+      process.stdout.write(`  ${checkDate}: `);
 
-      const facilityResult = {
-        name: facility.name,
-        totalSlots,
-        roomCount,
-        status: 'ok'
-      };
+      try {
+        const data = await fetchAvailability(checkDate);
 
-      // エラー判定
-      if (roomCount === 0) {
-        facilityResult.status = 'error';
-        results.hasError = true;
-        results.errors.push(`${facility.name}: 部屋データが0件`);
-      } else if (facility.error) {
-        facilityResult.status = 'error';
-        results.hasError = true;
-        results.errors.push(`${facility.name}: ${facility.error}`);
+        for (const target of WATCH_TARGETS) {
+          const facility = findWatchedFacility(data.facilities, target.keyword);
+          if (facility) {
+            facilityStats[target.keyword].found = true;
+            const slots = facility.rooms.reduce((sum, room) => sum + room.availableSlots.length, 0);
+            facilityStats[target.keyword].totalSlots += slots;
+            if (slots > 0) {
+              facilityStats[target.keyword].daysWithSlots++;
+            }
+          }
+        }
+
+        console.log('OK');
+      } catch (e) {
+        console.log(`エラー (${e.message})`);
       }
 
-      // 警告判定（空き枠が極端に少ない）
-      if (totalSlots === 0 && facilityResult.status !== 'error') {
-        facilityResult.status = 'warning';
-        results.hasWarning = true;
-        results.warnings.push(`${facility.name}: 空き枠0件`);
+      // API負荷軽減のため少し待機
+      if (i < CHECK_DAYS - 1) {
+        await new Promise(r => setTimeout(r, 500));
       }
-
-      results.facilities.push(facilityResult);
-
-      // コンソール出力
-      const statusIcon = facilityResult.status === 'ok' ? '✓' : facilityResult.status === 'warning' ? '!' : '✗';
-      console.log(`[${statusIcon}] ${facility.name}: ${totalSlots}枠 (${roomCount}部屋)`);
     }
 
     console.log(`\n----------------------------------------`);
-    console.log(`総施設数: ${results.facilities.length}`);
-    console.log(`エラー: ${results.errors.length}件`);
-    console.log(`警告: ${results.warnings.length}件`);
+    console.log(`【結果】`);
+
+    // 結果判定
+    for (const target of WATCH_TARGETS) {
+      const stats = facilityStats[target.keyword];
+      const icon = stats.totalSlots > 0 ? '✓' : '✗';
+      console.log(`[${icon}] ${stats.shortName}: ${stats.totalSlots}枠 (${stats.daysWithSlots}/${CHECK_DAYS}日に空きあり)`);
+
+      // 施設が見つからない場合
+      if (!stats.found) {
+        errors.push(`${stats.shortName}: 施設データが見つからない`);
+      }
+      // 7日間すべて空き0件の場合はスクレイピング故障の可能性大
+      else if (stats.totalSlots === 0) {
+        errors.push(`${stats.shortName}: 7日間すべて空き0件（スクレイピング故障の可能性）`);
+      }
+    }
+
     console.log(`----------------------------------------\n`);
 
     // 成功したので実行済みマークを作成
     markAsExecuted();
 
   } catch (error) {
-    results.hasError = true;
-    results.errors.push(`API取得エラー: ${error.message}`);
+    errors.push(`API取得エラー: ${error.message}`);
     console.error(`[エラー] API取得失敗: ${error.message}`);
 
     // API取得エラーの場合は実行済みマークを作成しない（次の時間帯で再試行）
     console.log('[リトライ] API取得に失敗したため、次の時間帯で再試行します');
 
-    // エラー通知は送信
     await sendDesktopNotification(
       '❌ サウナチェッカー - API接続エラー',
       `${error.message}\n次の時間帯で再試行します`,
@@ -129,13 +166,37 @@ async function runHealthCheck() {
       'Basso'
     );
 
-    return results;
+    return { hasError: true, errors };
   }
 
-  // デスクトップ通知を送信
-  await notifyHealthCheckResult(results);
+  // 通知送信
+  if (errors.length > 0) {
+    // エラーあり
+    const message = errors.join('\n');
+    await sendDesktopNotification(
+      '⚠️ スクレイピング異常検出',
+      message,
+      `${dateStr} チェック結果`,
+      'Basso'
+    );
+    console.log('[通知] エラー検出 - デスクトップ通知送信');
+  } else {
+    // 正常
+    const summary = WATCH_TARGETS.map(t => {
+      const stats = facilityStats[t.keyword];
+      return `${stats.shortName}: ${stats.totalSlots}枠`;
+    }).join(', ');
 
-  return results;
+    await sendDesktopNotification(
+      '✅ スクレイピング正常',
+      summary,
+      `${dateStr} チェック結果`,
+      'Glass'
+    );
+    console.log('[通知] 正常 - デスクトップ通知送信');
+  }
+
+  return { hasError: errors.length > 0, errors };
 }
 
 // メイン実行
