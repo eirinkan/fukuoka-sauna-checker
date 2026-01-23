@@ -82,6 +82,12 @@ async function sendNotification(notification) {
     case 'recovery':
       title += '[ok] スクレイピング復旧';
       break;
+    case 'daily_check_error':
+      title += '[警告] デイリーチェックでエラー検出';
+      break;
+    case 'daily_check_ok':
+      title += '[ok] デイリーチェック正常';
+      break;
     default:
       title += '通知';
   }

@@ -34,9 +34,109 @@ app.post('/api/refresh', handleRefresh);
 app.get('/api/refresh', handleRefresh);
 
 // API: ヘルスチェック
-const VERSION = '2026-01-13-v2'; // デプロイ確認用
+const VERSION = '2026-01-23-v1'; // デプロイ確認用
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', version: VERSION, timestamp: new Date().toISOString() });
+});
+
+// API: デイリーヘルスチェック（Cloud Scheduler用）
+// 全施設のデータが正常に取得できているかチェックし、問題があればChatwork通知
+app.get('/api/daily-check', async (req, res) => {
+  const notifier = require('./notifier');
+
+  const today = new Date();
+  const dateStr = today.toISOString().split('T')[0];
+
+  console.log(`[${new Date().toISOString()}] デイリーチェック開始`);
+
+  try {
+    const data = await getAvailability(dateStr);
+
+    // 各施設のチェック結果
+    const results = {
+      date: dateStr,
+      timestamp: new Date().toISOString(),
+      facilities: [],
+      hasError: false,
+      hasWarning: false
+    };
+
+    // 最小空き枠数のしきい値（これ以下で警告）
+    const MIN_SLOTS_THRESHOLD = 1;
+
+    for (const facility of data.facilities) {
+      const totalSlots = facility.rooms.reduce((sum, room) => sum + room.availableSlots.length, 0);
+      const roomCount = facility.rooms.length;
+
+      const facilityResult = {
+        name: facility.name,
+        roomCount,
+        totalSlots,
+        error: facility.error || null,
+        status: 'ok'
+      };
+
+      // エラー判定
+      if (facility.error) {
+        facilityResult.status = 'error';
+        results.hasError = true;
+      } else if (roomCount === 0) {
+        facilityResult.status = 'error';
+        facilityResult.error = '部屋データが0件';
+        results.hasError = true;
+      } else if (totalSlots < MIN_SLOTS_THRESHOLD) {
+        // 空き枠が極端に少ない場合は警告（完全に0でなくても）
+        facilityResult.status = 'warning';
+        facilityResult.warning = `空き枠が${totalSlots}件のみ`;
+        results.hasWarning = true;
+      }
+
+      results.facilities.push(facilityResult);
+    }
+
+    // 問題があればChatwork通知
+    if (results.hasError) {
+      const errorFacilities = results.facilities.filter(f => f.status === 'error');
+      const errorNames = errorFacilities.map(f => f.name).join(', ');
+      const errorDetails = errorFacilities.map(f => `・${f.name}: ${f.error || '不明なエラー'}`).join('\n');
+
+      await notifier.sendNotification({
+        type: 'daily_check_error',
+        message: `デイリーチェックでエラーを検出しました。\n\n対象施設: ${errorNames}`,
+        details: {
+          日付: dateStr,
+          エラー施設数: errorFacilities.length,
+          詳細: errorDetails
+        }
+      });
+
+      console.log(`[デイリーチェック] エラー検出: ${errorNames}`);
+    } else {
+      // 正常時もログ出力
+      const summary = results.facilities.map(f => `${f.name}: ${f.totalSlots}枠`).join(', ');
+      console.log(`[デイリーチェック] 正常完了 - ${summary}`);
+    }
+
+    res.json(results);
+  } catch (error) {
+    console.error(`[デイリーチェック] エラー:`, error.message);
+
+    // システムエラーの場合も通知
+    await notifier.sendNotification({
+      type: 'daily_check_error',
+      message: `デイリーチェックでシステムエラーが発生しました。`,
+      details: {
+        日付: dateStr,
+        エラー: error.message
+      }
+    });
+
+    res.status(500).json({
+      success: false,
+      error: error.message,
+      timestamp: new Date().toISOString()
+    });
+  }
 });
 
 // API: Puppeteer診断（Cloud Run環境デバッグ用）

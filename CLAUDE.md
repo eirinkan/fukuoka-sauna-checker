@@ -190,3 +190,22 @@ const timeRange = timeParts[0].replace(/^0/, '') + '〜' + timeParts[1].replace(
 - 空き判定: `input.timebox[data-vacancy="1"]`
 - 時間形式: `data-time="09:40～11:40"` → 全角チルダと波ダッシュの両方に対応
 - **重要**: ページ再アクセス禁止（Cloudflareトリガー回避）
+
+#### ⚠️ 継続的な観察が必要（2026-01-22）
+
+時間経過でスクレイピングが失敗することがある。
+
+**症状**: 全日程で空き枠0件になる
+**原因候補**: Cloudflare Cookie期限切れ、FlareSolverr障害
+
+**対策済み（コミット 10b8877）**:
+- Cookieキャッシュ90分TTL
+- Cloudflareチャレンジ検出時のキャッシュ無効化
+- ページ再アクセス削除（サウナヨーガン）
+
+**確認コマンド**:
+```bash
+curl -s "本番URL/api/availability?date=$(date +%Y-%m-%d)" | jq '[.facilities[] | select(.name | contains("GIRAFFE") or contains("ヨーガン"))] | .[] | {name, slots: [.rooms[].availableSlots | length] | add}'
+```
+
+**追加検討**: リトライ機構の実装
