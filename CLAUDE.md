@@ -209,3 +209,160 @@ curl -s "本番URL/api/availability?date=$(date +%Y-%m-%d)" | jq '[.facilities[]
 ```
 
 **追加検討**: リトライ機構の実装
+
+---
+
+## 実装ルール（地域拡大対応）
+
+地域や店舗を追加する際は、以下のルールに従うこと。
+
+### データ構造
+
+#### スクレイパーの返り値（必須形式）
+```javascript
+{
+  dates: {
+    'YYYY-MM-DD': {
+      '部屋名（時間/定員N名）¥価格': ['HH:MM〜HH:MM', ...]
+    }
+  }
+}
+```
+
+#### 日付フォーマット
+- 形式: `YYYY-MM-DD`（ISO 8601）
+- 例: `2026-01-25`
+
+#### 時間フォーマット
+- 形式: `HH:MM〜HH:MM`
+- 区切り文字: `〜`（波ダッシュ U+301C）を使用
+- 注意: 全角チルダ `～`（U+FF5E）は使用しない（内部で統一）
+- 例: `10:00〜12:00`, `9:40〜11:40`
+
+#### 部屋名フォーマット
+```
+部屋名（時間/定員N名）¥価格
+```
+
+| パターン | 形式 | 例 |
+|---------|------|-----|
+| 固定価格 | `¥X,XXX` | `Silk（90分/定員2名）¥6,000` |
+| 価格幅あり | `¥X,XXX-X,XXX` | `「陽」光の陽彩（120分/定員7名）¥6,600-11,000` |
+| 平日/週末 | `¥X,XXX-X,XXX` | `プライベートサウナ（150分/定員3名）¥9,900-13,200` |
+
+### スクレイパー実装ルール
+
+#### 関数シグネチャ
+```javascript
+async function scrape(browser) {
+  const page = await browser.newPage();
+  try {
+    const result = { dates: {} };
+    // スクレイピング処理
+    return result;
+  } finally {
+    await page.close();
+  }
+}
+```
+
+#### 必須設定
+1. **User-Agent**: 最新のChrome/Safariを模倣
+2. **Viewport**: `{ width: 1280, height: 800 }` 以上
+3. **タイムアウト**: 60秒以上（Cloudflare待機用）
+4. **タイムゾーン**: `page.emulateTimezone('Asia/Tokyo')` を設定
+
+#### ボット検知対策
+- `puppeteer-extra-plugin-stealth` を使用
+- `navigator.webdriver` を偽装
+- 適切な待機時間を設ける（2〜5秒）
+
+### 施設登録ルール
+
+#### scraper.js への登録
+
+1. スクレイパーをimport
+```javascript
+const newsite = require('./sites/newsite');
+```
+
+2. scrapeAll() に追加
+```javascript
+console.log('  - 新店舗 スクレイピング中...');
+try {
+  data.facilities.newStore = await scrapeWithMonitoring('newStore', newsite.scrape, browser);
+} catch (e) {
+  console.error('    新店舗 エラー:', e.message);
+  data.facilities.newStore = { error: e.message };
+}
+```
+
+3. facilityInfo に追加（必須フィールド）
+```javascript
+{
+  key: 'newStore',           // data.facilities のキー（キャメルケース）
+  name: '店舗名',             // 表示名
+  url: 'https://...',        // 予約ページURL
+  hpUrl: 'https://...',      // 公式サイトURL
+  mapUrl: 'https://www.google.com/maps/search/?api=1&query=店舗名+地域名'
+}
+```
+
+#### 表示順序
+- ユーザーの利用頻度・重要度に応じて決定
+- 新規施設は既存施設の後ろに追加
+- 地域別にグルーピングする場合は地域ごとにまとめる
+
+### 予約システム別テンプレート
+
+#### RESERVA系 (`reserva.be`)
+- Cloudflare保護あり → FlareSolverr必須
+- 空き判定: `input.timebox[data-vacancy="1"]`
+- 時間分割: `/[～〜]/` で分割（両方の文字に対応）
+- **重要**: ページ再アクセス禁止（Cloudflareトリガー回避）
+
+#### hacomono系 (`xxx.hacomono.jp`)
+- Cloudflare保護なし
+- カレンダーのDOM構造がシンプル
+- 空き判定: 要素の色やクラスで判定
+
+#### Coubic系 (`coubic.com`)
+- Cloudflare保護なし
+- 時間: ラジオボタンの`value`属性（ISO形式）
+- UTC→JST変換が必要（+9時間）
+
+#### gflow系 (`sw.gflow.cloud`)
+- Vue.jsベースのリアクティブUI
+- ラジオボタンのクリックは複数手法で試行
+- iframeでカレンダー表示
+
+#### spot-ly系 (`spot-ly.jp`)
+- タイムゾーン設定必須: `page.emulateTimezone('Asia/Tokyo')`
+- 正規表現は `[0-9]` を使用（`\d`はCloud Runで動作しない場合あり）
+- モーダル内の`disabled`属性で空き判定
+
+### 地域拡大時の注意点
+
+1. **命名規則**
+   - 施設キー: キャメルケース（例: `giraffeTenjin`）
+   - 同一ブランド複数店舗: `ブランド名+地域名`（例: `giraffeMiamitenjin`, `giraffeTenjin`）
+
+2. **地域別ファイル構成**（将来的な拡張）
+   - 現在: `src/sites/` に予約システム別
+   - 拡張案: `src/sites/fukuoka/`, `src/sites/tokyo/` など地域別も検討
+
+3. **料金データ**
+   - `public/index.html` の `guestPricing` に追加
+   - 平日/週末、追加人数、夜間料金などのパターンに対応
+
+### 新店舗追加チェックリスト
+
+- [ ] 予約システムを特定した
+- [ ] スクレイパーを作成/修正した（返り値形式を確認）
+- [ ] `scraper.js` にimportと実行コードを追加した
+- [ ] `scraper.js` の `facilityInfo` に店舗情報を追加した（url, hpUrl, mapUrl）
+- [ ] `public/index.html` の `guestPricing` に料金を追加した
+- [ ] 部屋名フォーマットが統一されている（時間/定員/価格）
+- [ ] 時間フォーマットが統一されている（`〜`使用）
+- [ ] ローカルで動作確認した
+- [ ] コミット＆プッシュした
