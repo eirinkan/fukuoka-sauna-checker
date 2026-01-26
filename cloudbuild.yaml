@@ -41,7 +41,7 @@ steps:
       - '--cpu'
       - '2'
       - '--timeout'
-      - '540'
+      - '900'
       - '--set-env-vars'
       - 'PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true,PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium,FLARESOLVERR_URL=https://flaresolverr-526007709848.asia-northeast1.run.app/v1,CLOUD_RUN=true,GCS_BUCKET=private-sauna-data'
 

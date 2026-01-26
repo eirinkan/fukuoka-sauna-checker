@@ -191,14 +191,9 @@ async function scrapeAll() {
   data.facilities = {};
 
   try {
-    // SAKURADO
-    console.log('  - SAKURADO スクレイピング中...');
-    try {
-      data.facilities.sakurado = await scrapeWithMonitoring('sakurado', sakurado.scrape, browser);
-    } catch (e) {
-      console.error('    SAKURADO エラー:', e.message);
-      data.facilities.sakurado = { error: e.message };
-    }
+    // === 重点監視対象（RESERVA系 - Cloudflare保護あり）を最初に処理 ===
+    // FlareSolverr Cookie取得が必要なため、処理時間が長い
+    // タイムアウトの影響を受けにくいよう、最初に実行する
 
     // GIRAFFE 南天神 (RESERVA)
     console.log('  - GIRAFFE南天神 スクレイピング中...');
@@ -209,7 +204,7 @@ async function scrapeAll() {
       data.facilities.giraffeMiamitenjin = { error: e.message };
     }
 
-    // GIRAFFE 天神 (RESERVA)
+    // GIRAFFE 天神 (RESERVA) - Cookie再利用で高速化
     console.log('  - GIRAFFE天神 スクレイピング中...');
     try {
       data.facilities.giraffeTenjin = await scrapeWithMonitoring('giraffeTenjin', reserva.scrapeTenjin, browser);
@@ -218,6 +213,26 @@ async function scrapeAll() {
       data.facilities.giraffeTenjin = { error: e.message };
     }
 
+    // サウナヨーガン (reserva.be) - Cookie再利用で高速化
+    console.log('  - サウナヨーガン スクレイピング中...');
+    try {
+      data.facilities.yogan = await scrapeWithMonitoring('yogan', yogan.scrape, browser);
+    } catch (e) {
+      console.error('    サウナヨーガン エラー:', e.message);
+      data.facilities.yogan = { error: e.message };
+    }
+
+    // 脈 (spot-ly) - 処理時間が比較的長い
+    console.log('  - 脈 スクレイピング中...');
+    try {
+      data.facilities.myaku = await scrapeWithMonitoring('myaku', myaku.scrape, browser);
+    } catch (e) {
+      console.error('    脈 エラー:', e.message);
+      data.facilities.myaku = { error: e.message };
+    }
+
+    // === 通常施設（Cloudflare保護なし - 処理が高速）===
+
     // KUDOCHI (hacomono)
     console.log('  - KUDOCHI スクレイピング中...');
     try {
@@ -225,6 +240,15 @@ async function scrapeAll() {
     } catch (e) {
       console.error('    KUDOCHI エラー:', e.message);
       data.facilities.kudochi = { error: e.message };
+    }
+
+    // SAKURADO
+    console.log('  - SAKURADO スクレイピング中...');
+    try {
+      data.facilities.sakurado = await scrapeWithMonitoring('sakurado', sakurado.scrape, browser);
+    } catch (e) {
+      console.error('    SAKURADO エラー:', e.message);
+      data.facilities.sakurado = { error: e.message };
     }
 
     // SAUNA OOO (gflow)
@@ -243,24 +267,6 @@ async function scrapeAll() {
     } catch (e) {
       console.error('    BASE エラー:', e.message);
       data.facilities.base = { error: e.message };
-    }
-
-    // 脈 (spot-ly)
-    console.log('  - 脈 スクレイピング中...');
-    try {
-      data.facilities.myaku = await scrapeWithMonitoring('myaku', myaku.scrape, browser);
-    } catch (e) {
-      console.error('    脈 エラー:', e.message);
-      data.facilities.myaku = { error: e.message };
-    }
-
-    // サウナヨーガン (reserva.be)
-    console.log('  - サウナヨーガン スクレイピング中...');
-    try {
-      data.facilities.yogan = await scrapeWithMonitoring('yogan', yogan.scrape, browser);
-    } catch (e) {
-      console.error('    サウナヨーガン エラー:', e.message);
-      data.facilities.yogan = { error: e.message };
     }
 
     // ヘルスサマリーをログ出力

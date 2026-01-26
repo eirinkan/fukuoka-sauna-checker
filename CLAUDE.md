@@ -191,24 +191,38 @@ const timeRange = timeParts[0].replace(/^0/, '') + '〜' + timeParts[1].replace(
 - 時間形式: `data-time="09:40～11:40"` → 全角チルダと波ダッシュの両方に対応
 - **重要**: ページ再アクセス禁止（Cloudflareトリガー回避）
 
-#### ⚠️ 継続的な観察が必要（2026-01-22）
+#### ⚠️ 継続的な観察が必要（2026-01-26更新）
 
 時間経過でスクレイピングが失敗することがある。
 
-**症状**: 全日程で空き枠0件になる
-**原因候補**: Cloudflare Cookie期限切れ、FlareSolverr障害
+**症状**: 全日程で空き枠0件になる（間欠的に発生）
 
-**対策済み（コミット 10b8877）**:
-- Cookieキャッシュ90分TTL
-- Cloudflareチャレンジ検出時のキャッシュ無効化
-- ページ再アクセス削除（サウナヨーガン）
+**根本原因（2026-01-26特定）**:
+1. **Cloud Runタイムアウト不足**: 540秒（9分）→ 8施設の処理に不足
+2. **スクレイピング順序**: RESERVA系が後半にあるとタイムアウトの影響を受けやすい
+
+**対策済み**:
+| 日付 | コミット | 対策 |
+|------|---------|------|
+| 2026-01-22 | 10b8877 | Cookieキャッシュ90分TTL、チャレンジ検出時キャッシュ無効化 |
+| 2026-01-26 | - | Cloud Runタイムアウト900秒に延長、RESERVA系を最初に処理 |
+
+**スクレイピング順序（修正後）**:
+1. GIRAFFE南天神（RESERVA）← 重点監視
+2. GIRAFFE天神（RESERVA）← 重点監視
+3. サウナヨーガン（RESERVA）← 重点監視
+4. 脈 MYAKU（spot-ly）← 重点監視
+5. KUDOCHI（hacomono）
+6. SAKURADO
+7. SAUNA OOO（gflow）
+8. BASE（Coubic）
 
 **確認コマンド**:
 ```bash
 curl -s "本番URL/api/availability?date=$(date +%Y-%m-%d)" | jq '[.facilities[] | select(.name | contains("GIRAFFE") or contains("ヨーガン"))] | .[] | {name, slots: [.rooms[].availableSlots | length] | add}'
 ```
 
-**追加検討**: リトライ機構の実装
+**今後の検討**: 並列実行によるさらなる高速化
 
 ---
 
