@@ -153,7 +153,12 @@ async function scrape(browser) {
     const now = new Date();
     const currentYear = now.getFullYear();
 
-    for (const dayData of allData) {
+    for (let i = 0; i < allData.length; i++) {
+      const dayData = allData[i];
+      // ナイトパック（5時間パック）は0〜2時台に始まる＝実際には前の日の夜に入る枠。
+      // カレンダー上は翌日の列に並ぶので、翌日ぶんから引いてこの日にまとめる
+      const nextDayData = allData[i + 1];
+
       // 年を決定（1月で現在が12月なら来年）
       let year = currentYear;
       if (dayData.month === 1 && now.getMonth() === 11) {
@@ -163,19 +168,20 @@ async function scrape(browser) {
       const dateStr = `${year}-${String(dayData.month).padStart(2, '0')}-${String(dayData.day).padStart(2, '0')}`;
       result.dates[dateStr] = {};
 
-      // 時間ソート関数
+      // 時間ソート関数（開始時刻順。24時以降の表記はそのまま後ろに来る）
       const sortSlots = (slots) => {
         return slots.sort((a, b) => {
-          const aStart = a.split('〜')[0];
-          const bStart = b.split('〜')[0];
-          const [aH, aM] = aStart.split(':').map(Number);
-          const [bH, bM] = bStart.split(':').map(Number);
-          // 深夜帯（0-6時）は24時以降として扱う
-          const aHour = aH < 7 ? aH + 24 : aH;
-          const bHour = bH < 7 ? bH + 24 : bH;
-          return (aHour * 60 + aM) - (bHour * 60 + bM);
+          const [aH, aM] = a.split('〜')[0].split(':').map(Number);
+          const [bH, bM] = b.split('〜')[0].split(':').map(Number);
+          return (aH * 60 + aM) - (bH * 60 + bM);
         });
       };
+
+      // "0:00〜5:00" → "24:00〜29:00"（前日の夜からの続きとして表す）
+      const toLateNightNotation = (slot) => slot.split('〜').map(t => {
+        const [h, m] = t.split(':');
+        return (parseInt(h) + 24) + ':' + m;
+      }).join('〜');
 
       for (const room of ROOM_NAMES) {
         // 通常プラン
@@ -183,12 +189,12 @@ async function scrape(browser) {
         const displayName = ROOM_INFO[room] || room;
         result.dates[dateStr][displayName] = sortSlots(slots);
 
-        // ナイトパック（空きがある場合のみ追加）
-        const nightSlots = dayData.nightSlots[room] || [];
-        if (nightSlots.length > 0 || slots.length === 0) {
-          // ナイトパックは常に表示（通常プランと同様に）
+        // ナイトパックは翌日の列から引いて、GIRAFFE・脈と同じく「入る夜」の日付にまとめる
+        // 時刻も24時以降の表記にそろえる（最終日は翌日ぶんを持たないので付かない）
+        const nightSlots = nextDayData ? (nextDayData.nightSlots[room] || []) : [];
+        if (nightSlots.length > 0) {
           const nightDisplayName = NIGHT_PACK_INFO[room] || `${room}（night）`;
-          result.dates[dateStr][nightDisplayName] = sortSlots(nightSlots);
+          result.dates[dateStr][nightDisplayName] = sortSlots(nightSlots.map(toLateNightNotation));
         }
       }
     }
