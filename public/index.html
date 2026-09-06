@@ -1350,8 +1350,9 @@
           const normalizedStartHour = startHour >= 24 ? startHour - 24 : startHour;
           const normalizedEndHour = endHour >= 24 ? endHour - 24 : endHour;
 
-          const startStr = String(normalizedStartHour).padStart(2, '0') + ':' + m1;
-          const endStr = String(normalizedEndHour).padStart(2, '0') + ':' + m2;
+          // 時刻の書き方は通常の枠（8:20〜9:50）に合わせてゼロ埋めしない
+          const startStr = normalizedStartHour + ':' + m1;
+          const endStr = normalizedEndHour + ':' + m2;
 
           return datePrefix + startStr + '〜' + endStr;
         }
