@@ -755,6 +755,8 @@
     let filterEndHour = null;
     // 人数（デフォルト2名）
     let guestCount = 2;
+    // 現在表示している枠の数（時間が経って枠が減ったかの判定に使う）
+    let visibleSlotCount = 0;
 
     // 曜日名
     const dayNames = ['日', '月', '火', '水', '木', '金', '土'];
@@ -1255,7 +1257,7 @@
                   </div>
                   <div class="slots">
                     ${v.availableSlots && v.availableSlots.length > 0
-                      ? v.availableSlots.map(slot => '<span class="slot">' + formatTimeSlot(slot, v.isNight) + '</span>').join('')
+                      ? v.availableSlots.map(slot => '<span class="slot">' + formatTimeSlot(slot) + '</span>').join('')
                       : '<span class="no-slots">空きなし</span>'
                     }
                   </div>
@@ -1326,15 +1328,16 @@
     }
 
     // 時間スロットのフォーマット（24時以上を翌X:XXに変換）
-    function formatTimeSlot(slot, isNightPack = false) {
+    // 日付を頭に付けるのは「24時以上の表記」だけ（例: 24:40〜26:40 = 選択日の夜から翌日未明）
+    // 0〜8時台の表記（KUDOCHIの 0:00〜5:00 や 5:40〜7:40）は選択日当日の早朝なので日付を付けない
+    function formatTimeSlot(slot) {
       return slot.replace(/(\d{1,2}):(\d{2})〜(\d{1,2}):(\d{2})/, (match, h1, m1, h2, m2) => {
         const startHour = parseInt(h1);
         const endHour = parseInt(h2);
 
-        // ナイトパック（開始が24時以降、または開始が0-8時で終了も0-8時）の場合
-        const isNight = startHour >= 24 || (startHour >= 0 && startHour <= 8 && endHour <= 8);
+        const isNight = startHour >= 24;
 
-        if (isNight || isNightPack) {
+        if (isNight) {
           // 選択中の日付から翌日を計算
           const selectedDate = new Date(dateSelect.value);
           const nextDay = new Date(selectedDate);
@@ -1380,6 +1383,56 @@
       if (filterEndHour !== null && slotStartHour >= filterEndHour) return false;
 
       return true;
+    }
+
+    // スロットが「いつまで選べるか」を実際の日時で求める（過ぎた枠を隠すために使う）
+    // 予約サイト側は終わった枠をしばらく空きのまま返すことがあり（KUDOCHIは終了後1時間ほど残る）、
+    // 取得データも数十分前のスナップショットなので、表示する側で現在時刻と突き合わせる
+    function getSlotDeadline(slot, baseDateStr) {
+      const [baseYear, baseMonth, baseDay] = baseDateStr.split('-').map(Number);
+
+      // 先頭に日付が付いた形式（脈のナイトパック: "9/7 1:00〜8:00"）
+      const dated = slot.match(/^(\d{1,2})\/(\d{1,2})\s+(\d{1,2}):(\d{2})/);
+      if (dated) {
+        const month = parseInt(dated[1]);
+        const day = parseInt(dated[2]);
+        const year = month < baseMonth ? baseYear + 1 : baseYear; // 年またぎ（12月→1月）
+        return new Date(year, month - 1, day, parseInt(dated[3]), parseInt(dated[4]));
+      }
+
+      // BASEの「13時代全て」形式は10分刻みの枠がまとまっているため、その時間帯の終わりまで残す
+      const hourBlock = slot.match(/^(\d{1,2})時代/);
+      if (hourBlock) {
+        return new Date(baseYear, baseMonth - 1, baseDay, parseInt(hourBlock[1]) + 1, 0);
+      }
+
+      const timeMatch = slot.match(/^(\d{1,2}):(\d{2})/);
+      if (!timeMatch) return null; // 「空き枠あり」など時刻がない表記は対象外
+
+      // 24時以上（例: 24:40）はDateが自動で翌日に繰り上げる
+      return new Date(baseYear, baseMonth - 1, baseDay, parseInt(timeMatch[1]), parseInt(timeMatch[2]));
+    }
+
+    // 開始時刻を過ぎた枠かどうか（今日を見ているときだけ効く）
+    function isSlotUpcoming(slot) {
+      const selected = dateSelect.value;
+      if (selected !== formatLocalDate(new Date())) return true; // 昨日・明日以降はそのまま表示
+      const deadline = getSlotDeadline(slot, selected);
+      if (!deadline) return true;
+      return deadline.getTime() > Date.now();
+    }
+
+    // 表示対象になる枠の数（時間経過で減ったかどうかの判定に使う）
+    function countVisibleSlots(data) {
+      let count = 0;
+      for (const facility of data.facilities || []) {
+        for (const room of facility.rooms || []) {
+          for (const slot of room.availableSlots || []) {
+            if (isSlotInTimeRange(slot) && isSlotUpcoming(slot)) count++;
+          }
+        }
+      }
+      return count;
     }
 
     // 施設の料金レンジを取得
@@ -1477,6 +1530,8 @@
 
     // 施設一覧を描画
     function renderFacilities(data) {
+      visibleSlotCount = countVisibleSlots(data);
+
       if (!data.facilities || data.facilities.length === 0) {
         facilitiesContainer.innerHTML = `
           <div class="loading">
@@ -1490,9 +1545,9 @@
       let facilities = JSON.parse(JSON.stringify(data.facilities)).map(facility => {
         if (facility.error || facility.linkOnly) return facility;
 
-        // 各部屋のスロットを時間帯でフィルタリング
+        // 各部屋のスロットを時間帯と現在時刻でフィルタリング
         const filteredRooms = (facility.rooms || []).map(room => {
-          const filteredSlots = (room.availableSlots || []).filter(isSlotInTimeRange);
+          const filteredSlots = (room.availableSlots || []).filter(slot => isSlotInTimeRange(slot) && isSlotUpcoming(slot));
           return { ...room, availableSlots: filteredSlots };
         });
 
@@ -1638,6 +1693,14 @@
         renderFacilities(currentData);
       }
     });
+
+    // 開いたままにしていても過ぎた枠が残らないよう、1分ごとに確認して減っていたら描き直す
+    setInterval(() => {
+      if (!currentData) return;
+      if (countVisibleSlots(currentData) !== visibleSlotCount) {
+        renderFacilities(currentData);
+      }
+    }, 60000);
 
     // 初期読み込み（料金データを先に取得）
     (async function init() {
