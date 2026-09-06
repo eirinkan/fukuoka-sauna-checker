@@ -1356,22 +1356,39 @@
           return datePrefix + startStr + '〜' + endStr;
         }
 
-        // 通常時間帯
-        let startStr = startHour + ':' + m1;
-        let endStr = endHour >= 24 ? '翌' + (endHour - 24) + ':' + m2 : endHour + ':' + m2;
+        // 通常時間帯（終了が翌日にまわる場合は「翌」を付ける）
+        // 予約サイトによって 22:10〜24:10 と 22:00〜0:00 の両方の書き方で来るため、表示側でそろえる
+        const crossesMidnight = endHour >= 24 || endHour < startHour;
+        const startStr = startHour + ':' + m1;
+        const endStr = crossesMidnight
+          ? '翌' + (endHour >= 24 ? endHour - 24 : endHour) + ':' + m2
+          : endHour + ':' + m2;
 
         return startStr + '〜' + endStr;
       });
+    }
+
+    // 時間帯フィルター用に開始の「時」を求める（翌日にまたぐ枠は24以上で返す）
+    function getSlotStartHour(slot) {
+      // 脈のナイトパック（"9/7 1:00〜8:00"）は翌日の枠なので24時以降として扱う
+      const dated = slot.match(/^\d{1,2}\/\d{1,2}\s+(\d{1,2}):/);
+      if (dated) return parseInt(dated[1]) + 24;
+
+      // BASEの「13時代全て」形式
+      const hourBlock = slot.match(/^(\d{1,2})時代/);
+      if (hourBlock) return parseInt(hourBlock[1]);
+
+      const startMatch = slot.match(/^(\d{1,2}):/);
+      if (!startMatch) return null;
+      return parseInt(startMatch[1]);
     }
 
     // 時間帯フィルター判定
     function isSlotInTimeRange(slot) {
       if (filterStartHour === null && filterEndHour === null) return true;
 
-      const startMatch = slot.match(/^(\d{1,2}):/);
-      if (!startMatch) return true;
-
-      let slotStartHour = parseInt(startMatch[1]);
+      let slotStartHour = getSlotStartHour(slot);
+      if (slotStartHour === null) return true;
 
       // 深夜帯フィルター（終了が24時を超える場合）で、スロット開始が0-8時の場合は24を足す
       // 例: 深夜プリセット(23-32)で01:00は25として扱い、フィルター範囲内と判定
@@ -1385,10 +1402,8 @@
       return true;
     }
 
-    // スロットが「いつまで選べるか」を実際の日時で求める（過ぎた枠を隠すために使う）
-    // 予約サイト側は終わった枠をしばらく空きのまま返すことがあり（KUDOCHIは終了後1時間ほど残る）、
-    // 取得データも数十分前のスナップショットなので、表示する側で現在時刻と突き合わせる
-    function getSlotDeadline(slot, baseDateStr) {
+    // スロットが始まる日時を求める（表示順の並べ替えと、過ぎた枠を隠す判定に使う）
+    function getSlotStartTime(slot, baseDateStr) {
       const [baseYear, baseMonth, baseDay] = baseDateStr.split('-').map(Number);
 
       // 先頭に日付が付いた形式（脈のナイトパック: "9/7 1:00〜8:00"）
@@ -1400,10 +1415,10 @@
         return new Date(year, month - 1, day, parseInt(dated[3]), parseInt(dated[4]));
       }
 
-      // BASEの「13時代全て」形式は10分刻みの枠がまとまっているため、その時間帯の終わりまで残す
+      // BASEの「13時代全て」形式
       const hourBlock = slot.match(/^(\d{1,2})時代/);
       if (hourBlock) {
-        return new Date(baseYear, baseMonth - 1, baseDay, parseInt(hourBlock[1]) + 1, 0);
+        return new Date(baseYear, baseMonth - 1, baseDay, parseInt(hourBlock[1]), 0);
       }
 
       const timeMatch = slot.match(/^(\d{1,2}):(\d{2})/);
@@ -1413,13 +1428,35 @@
       return new Date(baseYear, baseMonth - 1, baseDay, parseInt(timeMatch[1]), parseInt(timeMatch[2]));
     }
 
-    // 開始時刻を過ぎた枠かどうか（今日を見ているときだけ効く）
+    // スロットが「いつまで選べるか」（過ぎた枠を隠すために使う）
+    // 予約サイト側は終わった枠をしばらく空きのまま返すことがあり（KUDOCHIは終了後1時間ほど残る）、
+    // 取得データも数十分前のスナップショットなので、表示する側で現在時刻と突き合わせる
+    function getSlotDeadline(slot, baseDateStr) {
+      const start = getSlotStartTime(slot, baseDateStr);
+      if (!start) return null;
+      // 「13時代全て」は10分刻みの枠がまとまっているため、その時間帯の終わりまで残す
+      if (/^\d{1,2}時代/.test(slot)) return new Date(start.getTime() + 60 * 60 * 1000);
+      return start;
+    }
+
+    // 開始時刻を過ぎた枠かどうか（今日と、日付が変わった直後に残る前日ぶんに効く）
     function isSlotUpcoming(slot) {
       const selected = dateSelect.value;
-      if (selected !== formatLocalDate(new Date())) return true; // 昨日・明日以降はそのまま表示
+      if (selected > formatLocalDate(new Date())) return true; // 明日以降はそのまま表示
       const deadline = getSlotDeadline(slot, selected);
       if (!deadline) return true;
       return deadline.getTime() > Date.now();
+    }
+
+    // 表示順を実際の時刻順にそろえる（予約サイトによって並びがばらばらで、
+    // GIRAFFEは朝の枠が最後に、KUDOCHIは早朝の枠が最後に来ていた）
+    function compareSlots(a, b, baseDateStr) {
+      const timeA = getSlotStartTime(a, baseDateStr);
+      const timeB = getSlotStartTime(b, baseDateStr);
+      if (!timeA && !timeB) return 0;
+      if (!timeA) return -1; // 「空き枠あり」など時刻がない表記は先頭
+      if (!timeB) return 1;
+      return timeA - timeB;
     }
 
     // 表示対象になる枠の数（時間経過で減ったかどうかの判定に使う）
@@ -1545,9 +1582,11 @@
       let facilities = JSON.parse(JSON.stringify(data.facilities)).map(facility => {
         if (facility.error || facility.linkOnly) return facility;
 
-        // 各部屋のスロットを時間帯と現在時刻でフィルタリング
+        // 各部屋のスロットを時間帯と現在時刻でフィルタリングし、時刻順に並べる
         const filteredRooms = (facility.rooms || []).map(room => {
-          const filteredSlots = (room.availableSlots || []).filter(slot => isSlotInTimeRange(slot) && isSlotUpcoming(slot));
+          const filteredSlots = (room.availableSlots || [])
+            .filter(slot => isSlotInTimeRange(slot) && isSlotUpcoming(slot))
+            .sort((a, b) => compareSlots(a, b, dateSelect.value));
           return { ...room, availableSlots: filteredSlots };
         });
 
